@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/dhanekom/dbmigrator/pkg/config"
 )
 
 const (
@@ -29,13 +31,16 @@ type DBDriver interface {
 }
 
 type DBRepo struct {
+	app *config.AppConfig
 	driver DBDriver
 	connectionData DBConnectionData
 	db *sql.DB
 }
 
-func NewDBRepo(dbdrivername string, connData DBConnectionData) (*DBRepo, error) {
-	dbrepo := DBRepo{}
+func NewDBRepo(dbdrivername string, connData DBConnectionData, a *config.AppConfig) (*DBRepo, error) {
+	dbrepo := DBRepo{
+		app: a,
+	}
 	switch dbdrivername {
 	case DBDRIVER_POSTGRES:
 		dbrepo.driver = &PostgresDBDriver{}

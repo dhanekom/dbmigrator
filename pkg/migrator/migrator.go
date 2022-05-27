@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/dhanekom/dbmigrator/pkg/config"
 	"github.com/dhanekom/dbmigrator/pkg/dbrepo"
 	"github.com/dhanekom/dbmigrator/pkg/models"
 )
@@ -19,8 +20,7 @@ import (
 type Migrator struct {
 	path     string
 	dbrepository *dbrepo.DBRepo
-	verbose  bool
-	allowFix bool
+	app *config.AppConfig
 }
 
 const (
@@ -37,12 +37,11 @@ var (
 	re = regexp.MustCompile(`^(\d{8}_\d{6})_(\w+)\.(down|up)\.sql$`)
 )
 
-func NewMigrator(path string, db *dbrepo.DBRepo, verbose, allowFix bool) (*Migrator, error) {
+func NewMigrator(path string, db *dbrepo.DBRepo, a *config.AppConfig) (*Migrator, error) {
 	result := Migrator{
 		path: path,
 		dbrepository:  db,
-		verbose: verbose,
-	  allowFix: allowFix,
+		app: a,
 	}
 
 	return &result, nil
@@ -93,20 +92,24 @@ func (m Migrator) Create(version string) error {
 	version = sb.String()
 
 	if strings.Trim(version, " ") == "" {
-		return errors.New("migration name only contains invalid characters")
+		return errors.New("create - migration name only contains invalid characters")
 	}
 
 	t := time.Now()
 	version = t.Format("20060102_150405_") + version
-	file, err := os.Create(filepath.Join(m.path, version + ".up.sql"))
+	tmpFilepath := filepath.Join(m.path, version + ".up.sql")
+	fmt.Printf("creating %s\n", tmpFilepath)
+	file, err := os.Create(tmpFilepath)
 	if err != nil {
-		return fmt.Errorf("migrator.create - %s", err)
+		return fmt.Errorf("create - %s", err)
 	}
 	file.Close()
 
-	file, err = os.Create(filepath.Join(m.path, version + ".down.sql"))
+	tmpFilepath = filepath.Join(m.path, version + ".down.sql")
+	fmt.Printf("creating %s\n", tmpFilepath)
+	file, err = os.Create(tmpFilepath)
 	if err != nil {
-		return fmt.Errorf("migrator.create - %s", err)
+		return fmt.Errorf("create - %s", err)
 	}
 	file.Close()
 
@@ -114,6 +117,7 @@ func (m Migrator) Create(version string) error {
 }
 
 func (m Migrator) getMigrationVersionInfo() ([]models.MigrationVersion, error) {
+	m.app.LogVerboseLn("gathering migration version info")
 	result := make([]models.MigrationVersion, 0)
 	mvs := make(map[string]*models.MigrationVersion, 0)
 	files, err := ioutil.ReadDir(m.path)
@@ -125,7 +129,8 @@ func (m Migrator) getMigrationVersionInfo() ([]models.MigrationVersion, error) {
 		matches := re.FindAllStringSubmatch(file.Name(), -1)
 
 		if matches == nil {
-			return result, fmt.Errorf("getMigrationVersionInfo - unable to parse seperate parts of filename %s", file.Name())
+			m.app.LogVerbosef("unable to parse seperate parts of filename %s\n", file.Name())
+			continue
 		}
 
 		var mv *models.MigrationVersion
@@ -178,6 +183,7 @@ func (m Migrator) getMigrationVersionInfo() ([]models.MigrationVersion, error) {
 }
 
 func (m Migrator) getMigrationsToRun(mvs []models.MigrationVersion, currentVersion, toVersion, migrationDirection string) ([]models.MigrationVersion, error) {
+	m.app.LogVerboseLn("determining migrations to run")
 	result := make([]models.MigrationVersion, 0)
 
 	if migrationDirection == DIRECTION_UP && currentVersion >= toVersion {
@@ -205,17 +211,18 @@ func (m Migrator) migrate(command, toVersion string) error {
 		return errors.New("migrate - force migrations require a to version to be specified")
 	}
 
-	// fmt.Println("connecting to DB")
+	m.app.LogVerboseLn("connecting to DB")
 	err := m.dbrepository.ConnectToDB()
 	if err != nil {
 		return fmt.Errorf("migrate - %s", err)
 	}
 
 	defer func(){
+		m.app.LogVerboseLn("closing DB")
 		m.dbrepository.CloseDB()
 	}()
 
-	// fmt.Println("successfully connected to DB")
+	m.app.LogVerboseLn("successfully connected to DB")
 
 	err = m.dbrepository.SetupMigrationTable()
 	if err != nil {
@@ -237,7 +244,7 @@ func (m Migrator) migrate(command, toVersion string) error {
 		for i := len(mvs) -1; i >= 0; i-- {
 			if mvs[i].FileExists(command) {
 				toVersion = mvs[i].Version				
-				fmt.Printf("migrating to version %s\n", toVersion)
+				m.app.LogVerbosef("migration version: %s\n", toVersion)
 				break
 			}
 		}
@@ -251,7 +258,8 @@ func (m Migrator) migrate(command, toVersion string) error {
 	}	
 
 	if toVersion == currentVersion {
-		return fmt.Errorf("migrate - db already migrate to the newest version")
+		fmt.Printf("db already migrated to the newest version")
+		return nil
 	}
 	// Determine direction. If e.g. version > current version then an up is required
 
@@ -315,17 +323,18 @@ func (m Migrator) Down(version string) error {
 }
 
 func (m Migrator) List() error {
-	fmt.Println("connecting to DB")
+	m.app.LogVerboseLn("connecting to DB")
 	err := m.dbrepository.ConnectToDB()
 	if err != nil {
 		return fmt.Errorf("migrate - %s", err)
 	}
 
 	defer func(){
+		m.app.LogVerboseLn("closing DB")
 		m.dbrepository.CloseDB()
 	}()
 
-	fmt.Println("successfully connected to DB")		
+	m.app.LogVerboseLn("successfully connected to DB")		
 
 	err = m.dbrepository.SetupMigrationTable()
 	if err != nil {
@@ -348,7 +357,7 @@ func (m Migrator) List() error {
 	fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", "Version", "Description", "Migrated", "Up Exists", "Down Exists")
 	fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", "-------", "-----------", "--------", "---------", "-----------")
 	for _, mv := range mvs {
-		fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", "N"), getBoolStr(mv.DownFileExists, "Y", "N"))
+		fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
 	}
 
 	return nil
