@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -19,12 +21,6 @@ var infoLog *log.Logger
 var errorLog *log.Logger
 
 func main() {
-	infoLog = log.New(os.Stdout, "INFO\t", log.Ldate|log.Ltime)
-	app.Infolog = infoLog
-
-	errorLog = log.New(os.Stderr, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
-	app.Errorlog = errorLog
-
 	// get arguments
 	var (
 		dbDrivername *string = new(string)
@@ -35,8 +31,9 @@ func main() {
 		dbPassword *string = new(string)
 		dbSSL *string = new(string)
 		migrationDir *string = new(string)
-		allowFix bool
 		verbose *bool = new(bool)
+		allowFix bool
+		logDir string		
 		// fix *bool = new(bool)
 	)
 	
@@ -56,8 +53,6 @@ func main() {
 
 	_, err := os.Stat(".env")
 	if err == nil {
-		app.LogVerboseLn("reading configs from .env file")
-
 		err := godotenv.Load()
 		if err != nil {
 			fmt.Printf("Error loading .env file - %s", err)
@@ -93,6 +88,7 @@ func main() {
 		}		
 		tmpAllowFix := os.Getenv("DBMIGRATOR_ALLOW_FIX")
 		allowFix, _ = strconv.ParseBool(tmpAllowFix)
+		logDir = os.Getenv("DBMIGRATOR_LOG_DIR")
 	}
 	// fix = flag.Bool("fix", false, "More details logging")
 
@@ -126,14 +122,32 @@ func main() {
 	}
 
 	app.AllowFix = allowFix
- 
-	// if !(*dbSSL == "disable") && !(*dbSSL == "prefer") && !(*dbSSL == "require") {
-	// 	*dbSSL = "disable"
-	// }	
 
-	// if !allowFix && *fix {
-	// 	fmt.Prinln("fix option will only be allowed it the DBMIGRATOR_ALLOW_FIX is set to true in a .env file")
-	// }
+	exPath, err := os.Executable()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	exPath = path.Dir(exPath)
+
+	if logDir == "" {
+		logDir = exPath
+	}
+
+	appFilename := os.Args[0]
+	logFilename := appFilename[:len(appFilename) - len(filepath.Ext(appFilename))] + ".log"
+	logFile, err := os.OpenFile(filepath.Join(logDir, logFilename), os.O_APPEND|os.O_CREATE, 0666)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}	
+
+	infoLog = log.New(logFile, "INFO\t", log.Ldate|log.Ltime)
+	app.Infolog = infoLog
+
+	errorLog = log.New(logFile, "ERROR\t", log.Ldate|log.Ltime|log.Lshortfile)
+	app.Errorlog = errorLog	
 
 	var command, commandAttr string
 	if len(flag.Args()) -1 > 2 {
@@ -166,6 +180,7 @@ func main() {
 	// Create Migrator
 	myMigrator, err := migrator.NewMigrator(*migrationDir, myDBRepo, &app)
 	if err != nil {
+		errorLog.Println(err)
 		fmt.Println(err)
 		os.Exit(1)
 	}
@@ -173,6 +188,7 @@ func main() {
 	// Execute migrator command
 	err = myMigrator.Execute(command, commandAttr)
 	if err != nil {
+		errorLog.Println(err)
 		fmt.Println(err)
 		os.Exit(1)
 	}
