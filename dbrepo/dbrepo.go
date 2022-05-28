@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dhanekom/dbmigrator/pkg/config"
+	"github.com/dhanekom/dbmigrator/config"
 )
 
 const (

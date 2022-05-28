@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dhanekom/dbmigrator/pkg/config"
-	"github.com/dhanekom/dbmigrator/pkg/dbrepo"
-	"github.com/dhanekom/dbmigrator/pkg/migrator"
+	"github.com/dhanekom/dbmigrator/config"
+	"github.com/dhanekom/dbmigrator/dbrepo"
+	"github.com/dhanekom/dbmigrator/migrator"
 	"github.com/joho/godotenv"
 )
 
@@ -31,14 +31,11 @@ func main() {
 		dbPassword *string = new(string)
 		dbSSL *string = new(string)
 		migrationDir *string = new(string)
-		verbose *bool = new(bool)
 		allowFix bool
 		logDir string		
 		// fix *bool = new(bool)
 	)
 	
-	*verbose = false
-	// *fix = false
 	*dbSSL = "disable"
 
 	dbDrivername = flag.String("dbdriver", dbrepo.DBDRIVER_POSTGRES, fmt.Sprintf("Database driver (%s)", dbrepo.DBDRIVER_POSTGRES))
@@ -49,7 +46,6 @@ func main() {
 	dbPassword = flag.String("password", "", "Database password")
 	dbSSL = flag.String("dbssl", "disable", "Database sslsettings (disable, prefer, require)")
 	migrationDir = flag.String("path", "./migrations", "Path of migration files")
-	verbose = flag.Bool("verbose", false, "More detailed logging")
 
 	_, err := os.Stat(".env")
 	if err == nil {
@@ -94,8 +90,6 @@ func main() {
 
 	flag.Parse()
 
-	app.Verbose = *verbose
-
 	missingParams := make([]string, 0)
 	checkAndAddMissingParams := func(desc string, value string) {
 		if value == "" {
@@ -135,13 +129,21 @@ func main() {
 		logDir = exPath
 	}
 
+	if _, err := os.Stat(logDir); os.IsNotExist(err) {
+		err = os.MkdirAll(logDir, 0666)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}	
+
 	appFilename := os.Args[0]
 	logFilename := appFilename[:len(appFilename) - len(filepath.Ext(appFilename))] + ".log"
 	logFile, err := os.OpenFile(filepath.Join(logDir, logFilename), os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
-	}	
+	}
+	defer logFile.Close()
 
 	infoLog = log.New(logFile, "INFO\t", log.Ldate|log.Ltime)
 	app.Infolog = infoLog
@@ -177,7 +179,6 @@ func main() {
 		&app,
 	)
 
-	// Create Migrator
 	myMigrator, err := migrator.NewMigrator(*migrationDir, myDBRepo, &app)
 	if err != nil {
 		errorLog.Println(err)
@@ -185,11 +186,168 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Execute migrator command
-	err = myMigrator.Execute(command, commandAttr)
+	err = execute(myMigrator, command, commandAttr)
 	if err != nil {
 		errorLog.Println(err)
 		fmt.Println(err)
 		os.Exit(1)
 	}
+}
+
+func execute(m *migrator.Migrator, command, commandAttr string) error {
+	command = strings.ToLower(command)
+
+	m.App.Infolog.Printf("executed command %q with attributes %q", command, commandAttr)
+
+	switch command {
+  case migrator.COMMAND_CREATE:
+		return m.Create(commandAttr)
+	case migrator.COMMAND_UP:
+		return m.Up(commandAttr)
+	case migrator.COMMAND_DOWN:
+		return m.Down(commandAttr)
+	case migrator.COMMAND_FORCE:
+		return m.Force(commandAttr)
+	case migrator.COMMAND_LIST:
+		return listMigrationInfo(m)
+	case migrator.COMMAND_FIX:
+		return fixMigrations(m)
+	case migrator.COMMAND_VERSION:
+		return listCurrentVersion(m)			
+	default:
+		return fmt.Errorf("%q is not a valid command. Valid commands are %q, %q, %q, %q", command, migrator.COMMAND_CREATE, migrator.COMMAND_UP, migrator.COMMAND_DOWN, migrator.COMMAND_FORCE)
+	}
+}
+
+func listMigrationInfo(m *migrator.Migrator) error {
+	m.App.Infolog.Println("connecting to DB")
+	err := m.DBRepository.ConnectToDB()
+	if err != nil {
+		return fmt.Errorf("list - %s", err)
+	}
+
+	defer func(){
+		m.App.Infolog.Println("closing DB")
+		m.DBRepository.CloseDB()
+	}()
+
+	m.App.Infolog.Println("successfully connected to DB")		
+
+	err = m.DBRepository.SetupMigrationTable()
+	if err != nil {
+		return fmt.Errorf("list - %s", err)
+	}	
+
+	mvs, err := m.GetMigrationVersionInfo()
+	if err != nil {
+		return fmt.Errorf("list - %s", err)
+	}
+
+	getBoolStr := func(value bool, TrueStr, FalseStr string) string {
+		if value {
+			return TrueStr
+		} else {
+			return FalseStr
+		}
+	}
+
+	fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", "Version", "Description", "Migrated", "Up Exists", "Down Exists")
+	fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", "-------", "-----------", "--------", "---------", "-----------")
+	for _, mv := range mvs {
+		fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
+	}
+
+	return nil
+}
+
+func fixMigrations(m *migrator.Migrator) error {
+	var msg string
+	m.App.Infolog.Println("connecting to DB")
+	err := m.DBRepository.ConnectToDB()
+	if err != nil {
+		return fmt.Errorf("fixMigrations - %s", err)
+	}
+
+	defer func(){
+		m.App.Infolog.Println("closing DB")
+		m.DBRepository.CloseDB()
+	}()
+
+	m.App.Infolog.Println("successfully connected to DB")		
+
+	err = m.DBRepository.SetupMigrationTable()
+	if err != nil {
+		return fmt.Errorf("fixMigrations - %s", err)
+	}	
+
+	mvs, err := m.GetMigrationVersionInfo()
+	if err != nil {
+		return fmt.Errorf("fixMigrations - %s", err)
+	}
+
+	// Check if there are migrations that are older that the current migration version that have not been run
+	currentVersion, err := m.CurrentVersion()
+	if err != nil {
+		return fmt.Errorf("fixMigrations - %s", err)
+	}
+
+	lastVersionBeforeGap := ""
+	hasGap := false
+	for _, mv := range mvs {
+		if !mv.ExistsInDB {
+			msg = "migrations gaps found"
+			fmt.Println(msg)
+			m.App.Infolog.Println("fixMigrations - " + msg)		
+			msg = fmt.Sprintf("oldest migration version not yet executed: %s", mv.Version)
+			fmt.Println(msg)
+			m.App.Infolog.Println("fixMigrations - " + msg)
+			hasGap = true
+			break
+		}
+		lastVersionBeforeGap = mv.Version
+	}
+
+	if hasGap {
+		msg = fmt.Sprintf("migrating down to version %s", lastVersionBeforeGap)
+		fmt.Println(msg)
+		m.App.Infolog.Println("fixMigrations - " + msg)
+		err = m.Migrate(migrator.DIRECTION_DOWN, lastVersionBeforeGap)
+		if err != nil {
+			return fmt.Errorf("fixMigrations - %s", err)
+		}
+
+		msg = fmt.Sprintf("migrating up to previous current version %s", currentVersion)
+		fmt.Println(msg)
+		m.App.Infolog.Println("fixMigrations - " + msg)		
+		err = m.Migrate(migrator.DIRECTION_UP, currentVersion)
+		if err != nil {
+			return fmt.Errorf("fixMigrations - %s", err)
+		}
+	}
+
+	return nil
+}
+
+func listCurrentVersion(m *migrator.Migrator) error {
+	m.App.Infolog.Println("connecting to DB")
+	err := m.DBRepository.ConnectToDB()
+	if err != nil {
+		return fmt.Errorf("listCurrentVersion - %s", err)
+	}
+
+	defer func(){
+		m.App.Infolog.Println("closing DB")
+		m.DBRepository.CloseDB()
+	}()
+
+	currentVersion, err := m.CurrentVersion()
+	if err != nil {
+		return fmt.Errorf("listCurrentVersion - %s", err)
+	}
+
+	msg := fmt.Sprintf("current version: %s", currentVersion)
+	fmt.Println(msg)
+	m.App.Infolog.Println("listCurrentVersion - " + msg)		
+
+	return nil
 }
