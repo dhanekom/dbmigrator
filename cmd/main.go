@@ -32,61 +32,48 @@ func main() {
 		dbSSL *string = new(string)
 		migrationDir *string = new(string)
 		allowFix bool
-		logDir string		
-		// fix *bool = new(bool)
+		logpath *string		
 	)
-	
-	*dbSSL = "disable"
 
-	dbDrivername = flag.String("dbdriver", dbrepo.DBDRIVER_POSTGRES, fmt.Sprintf("Database driver (%s)", dbrepo.DBDRIVER_POSTGRES))
-	dbHost = flag.String("host", "", "Database host IP or URL")
-	dbPort = flag.String("port", "", "Database port")
-	dbName = flag.String("dbname", "", "Database name")
-	dbUser = flag.String("user", "", "Database username")
-	dbPassword = flag.String("password", "", "Database password")
-	dbSSL = flag.String("dbssl", "disable", "Database sslsettings (disable, prefer, require)")
-	migrationDir = flag.String("path", "./migrations", "Path of migration files")
+	allowFix = false
+	
+	dbDrivername = flag.String("dbdriver", "", fmt.Sprintf("database driver"))
+	dbHost = flag.String("host", "", "database host IP or URL")
+	dbPort = flag.String("port", "", "database port")
+	dbName = flag.String("dbname", "", "database name")
+	dbUser = flag.String("user", "", "database username")
+	dbPassword = flag.String("password", "", "database password")
+	dbSSL = flag.String("dbssl", "disable", "database sslsettings (disable, prefer, require)")
+	migrationDir = flag.String("migration_dir", "", "directory of migration files")
+	logpath = flag.String("log_path", "", "full path of log file")
 
 	_, err := os.Stat(".env")
 	if err == nil {
 		err := godotenv.Load()
 		if err != nil {
-			fmt.Printf("Error loading .env file - %s", err)
+			fmt.Printf("error loading .env file - %s", err)
 			os.Exit(1)
-		}				
+		}
+		
+		loadParam := func(value *string, envParamName string, useEnvValueIfProvided bool) {
+			envParamValue := os.Getenv(envParamName)
+			if (*value == "" && envParamValue != "") || (envParamValue != "" && useEnvValueIfProvided) {
+				*value	= envParamValue		
+			}			
+		}
 
-		tmpDrivername := os.Getenv("DBMIGRATOR_DB_DRIVER")
-		if *dbDrivername == "" && tmpDrivername != "" {
-			*dbDrivername	= tmpDrivername		
-		}
-		if *dbHost == "" {
-			*dbHost = os.Getenv("DBMIGRATOR_DB_HOST")
-		}
-		if *dbPort == "" {
-			*dbPort = os.Getenv("DBMIGRATOR_DB_PORT")	
-		}
-		if *dbName == "" {
-			*dbName = os.Getenv("DBMIGRATOR_DB_NAME")
-		}		
-		if *dbUser == "" {
-			*dbUser = os.Getenv("DBMIGRATOR_DB_USERNAME")
-		}		
-		if *dbPassword == "" {
-			*dbPassword = os.Getenv("DBMIGRATOR_DB_PASSWORD")
-		}		
-		tmpDBSSL := os.Getenv("DBMIGRATOR_DB_SSL")
-		if tmpDBSSL == "" && tmpDBSSL != "" {
-			*dbSSL = tmpDBSSL
-		}
-		tmpMigrationDir := os.Getenv("DBMIGRATOR_PATH")
-		if *migrationDir != "" && tmpMigrationDir != "" {
-			*migrationDir = tmpMigrationDir
-		}		
+		loadParam(dbDrivername, "DBMIGRATOR_DB_DRIVER", false)
+		loadParam(dbHost, "DBMIGRATOR_DB_HOST", false)
+		loadParam(dbPort, "DBMIGRATOR_DB_PORT", false)
+		loadParam(dbName, "DBMIGRATOR_DB_NAME", false)
+		loadParam(dbUser, "DBMIGRATOR_DB_USERNAME", false)
+		loadParam(dbPassword, "DBMIGRATOR_DB_PASSWORD", false)
+		loadParam(dbSSL, "DBMIGRATOR_DB_SSL", true)
+		loadParam(migrationDir, "DBMIGRATOR_MIGRATION_DIR", false)
+		loadParam(logpath, "DBMIGRATOR_LOG_PATH", false)
 		tmpAllowFix := os.Getenv("DBMIGRATOR_ALLOW_FIX")
 		allowFix, _ = strconv.ParseBool(tmpAllowFix)
-		logDir = os.Getenv("DBMIGRATOR_LOG_DIR")
 	}
-	// fix = flag.Bool("fix", false, "More details logging")
 
 	flag.Parse()
 
@@ -103,7 +90,7 @@ func main() {
 	checkAndAddMissingParams("dbName", *dbName)
 	checkAndAddMissingParams("user", *dbUser)
 	checkAndAddMissingParams("password", *dbPassword)
-	checkAndAddMissingParams("path", *migrationDir)
+	checkAndAddMissingParams("migration_dir", *migrationDir)
 
 	if len(missingParams) > 0 {
 		var tmpErrStr string
@@ -117,6 +104,9 @@ func main() {
 
 	app.AllowFix = allowFix
 
+	appFilename := os.Args[0]
+	appFilenameExclExt := appFilename[:len(appFilename) - len(filepath.Ext(appFilename))]
+
 	exPath, err := os.Executable()
 	if err != nil {
 		fmt.Println(err)
@@ -125,25 +115,31 @@ func main() {
 
 	exPath = path.Dir(exPath)
 
-	if logDir == "" {
-		logDir = exPath
+	if *logpath == "" {
+		*logpath = filepath.Join(exPath, "logs", appFilenameExclExt + ".log")
 	}
 
-	if _, err := os.Stat(logDir); os.IsNotExist(err) {
-		err = os.MkdirAll(logDir, 0666)
+	if _, err := os.Stat(filepath.Dir(*logpath)); os.IsNotExist(err) {
+		err = os.MkdirAll(filepath.Dir(*logpath), 0666)
 		if err != nil {
 			log.Fatal(err)
 		}
-	}	
+	}
 
-	appFilename := os.Args[0]
-	logFilename := appFilename[:len(appFilename) - len(filepath.Ext(appFilename))] + ".log"
-	logFile, err := os.OpenFile(filepath.Join(logDir, logFilename), os.O_APPEND|os.O_CREATE, 0666)
+	// logFilename := appFilenameExclExt + ".log"
+	logFile, err := os.OpenFile(*logpath, os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	defer logFile.Close()
+
+	if _, err := os.Stat(*migrationDir); os.IsNotExist(err) {
+		err = os.MkdirAll(*migrationDir, 0666)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}			
 
 	infoLog = log.New(logFile, "INFO\t", log.Ldate|log.Ltime)
 	app.Infolog = infoLog
@@ -270,6 +266,10 @@ func listMigrationInfo(m *migrator.Migrator) error {
 }
 
 func fixMigrations(m *migrator.Migrator) error {
+	if !m.App.AllowFix {
+		return fmt.Errorf("fix option has been disabled")
+	}
+
 	var msg string
 	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
@@ -300,44 +300,32 @@ func fixMigrations(m *migrator.Migrator) error {
 		return fmt.Errorf("fixMigrations - %s", err)
 	}
 
-	// lastValidVersion := ""
-	// hasGap := false
-	// for _, mv := range mvs {
-	// 	if !mv.ExistsInDB {
-	// 		msg = "migration gaps found"
-	// 		fmt.Println(msg)
-	// 		m.App.Infolog.Println("fixMigrations - " + msg)		
-	// 		msg = fmt.Sprintf("oldest migration version not yet executed: %s", mv.Version)
-	// 		fmt.Println(msg)
-	// 		m.App.Infolog.Println("fixMigrations - " + msg)
-	// 		hasGap = true
-	// 		break
-	// 	}
-	// 	lastValidVersion = mv.Version
-	// }
-
 	migrationGaps, lastValidVersion := m.FindMigrationGaps(mvs, currentVersion)
 
-	if migrationGaps == nil {
-		fmt.Println("no gaps found")
+	if len(migrationGaps) == 0 {
+		fmt.Println("no migration gaps found. Nothing to fix")
+		return nil
 	}
 
-	if len(migrationGaps) > 0 {
-		msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
-		fmt.Println(msg)
-		m.App.Infolog.Println("fixMigrations - " + msg)
-		err = m.Migrate(migrator.DIRECTION_DOWN, lastValidVersion)
-		if err != nil {
-			return fmt.Errorf("fixMigrations - %s", err)
-		}
+	err = m.GetConfirmation(`please type 'yes' to continue with the fix or 'no' to cancel`, []string{"yes"})
+	if err != nil {
+		return fmt.Errorf("fixMigrations - %s", err)
+	}	
 
-		msg = fmt.Sprintf("migrating up to previous current version %s", currentVersion)
-		fmt.Println(msg)
-		m.App.Infolog.Println("fixMigrations - " + msg)		
-		err = m.Migrate(migrator.DIRECTION_UP, currentVersion)
-		if err != nil {
-			return fmt.Errorf("fixMigrations - %s", err)
-		}
+	msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
+	fmt.Println(msg)
+	m.App.Infolog.Println("fixMigrations - " + msg)
+	err = m.Migrate(migrator.DIRECTION_DOWN, lastValidVersion)
+	if err != nil {
+		return fmt.Errorf("fixMigrations - %s", err)
+	}
+
+	msg = fmt.Sprintf("migrating up to previous current version %s", currentVersion)
+	fmt.Println(msg)
+	m.App.Infolog.Println("fixMigrations - " + msg)
+	err = m.Migrate(migrator.DIRECTION_UP, currentVersion)
+	if err != nil {
+		return fmt.Errorf("fixMigrations - %s", err)
 	}
 
 	return nil

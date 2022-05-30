@@ -21,6 +21,7 @@ type Migrator struct {
 	path     string
 	DBRepository *dbrepo.DBRepo
 	App *config.AppConfig
+	confirmationProvided bool
 }
 
 const (
@@ -44,9 +45,26 @@ func NewMigrator(path string, db *dbrepo.DBRepo, a *config.AppConfig) (*Migrator
 		path: path,
 		DBRepository:  db,
 		App: a,
+		confirmationProvided: false,
 	}
 
 	return &result, nil
+}
+
+func (m *Migrator) GetConfirmation(promptMsg string, trueValues []string) (error) {
+	if m.confirmationProvided {
+		return nil
+	}
+
+  var answer string
+	fmt.Printf("%s: ", promptMsg)
+	_, err := fmt.Scanf("%s", &answer)
+	if err != nil || answer != "yes" {
+		return errors.New("command cancelled")
+	}
+
+	m.confirmationProvided = true
+	return nil
 }
 
 // Create creates an up and down migration file in the configured migration directory
@@ -316,6 +334,13 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 	migrationsToRun, err := m.GetMigrationsToRun(mvs, currentVersion, toVersion, migrationDirection)
 	if err != nil {
 		return fmt.Errorf("migrate - %s", err)
+	}
+
+	if len(migrationsToRun) > 0 && migrationDirection == DIRECTION_DOWN && !m.confirmationProvided {
+		err := m.GetConfirmation(`please type 'yes' to continue or 'no' to cancel`, []string{"yes"})
+		if err != nil {
+			return fmt.Errorf("migrate - %s", err)
+		}
 	}
 
 	for _, mv := range migrationsToRun {
