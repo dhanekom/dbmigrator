@@ -199,6 +199,15 @@ func execute(m *migrator.Migrator, command, commandAttr string) error {
 
 	m.App.Infolog.Printf("executed command %q with attributes %q", command, commandAttr)
 
+	// validCommands := make([]string, 0)
+	// validCommands = append(validCommands, migrator.COMMAND_CREATE);
+	// validCommands = append(validCommands, migrator.COMMAND_UP);
+	// validCommands = append(validCommands, migrator.COMMAND_DOWN);
+	// validCommands = append(validCommands, migrator.COMMAND_FORCE);
+	// validCommands = append(validCommands, migrator.COMMAND_LIST);
+	// validCommands = append(validCommands, migrator.COMMAND_FIX);
+	// validCommands = append(validCommands, migrator.COMMAND_VERSION);
+
 	switch command {
   case migrator.COMMAND_CREATE:
 		return m.Create(commandAttr)
@@ -291,27 +300,33 @@ func fixMigrations(m *migrator.Migrator) error {
 		return fmt.Errorf("fixMigrations - %s", err)
 	}
 
-	lastVersionBeforeGap := ""
-	hasGap := false
-	for _, mv := range mvs {
-		if !mv.ExistsInDB {
-			msg = "migrations gaps found"
-			fmt.Println(msg)
-			m.App.Infolog.Println("fixMigrations - " + msg)		
-			msg = fmt.Sprintf("oldest migration version not yet executed: %s", mv.Version)
-			fmt.Println(msg)
-			m.App.Infolog.Println("fixMigrations - " + msg)
-			hasGap = true
-			break
-		}
-		lastVersionBeforeGap = mv.Version
+	// lastValidVersion := ""
+	// hasGap := false
+	// for _, mv := range mvs {
+	// 	if !mv.ExistsInDB {
+	// 		msg = "migration gaps found"
+	// 		fmt.Println(msg)
+	// 		m.App.Infolog.Println("fixMigrations - " + msg)		
+	// 		msg = fmt.Sprintf("oldest migration version not yet executed: %s", mv.Version)
+	// 		fmt.Println(msg)
+	// 		m.App.Infolog.Println("fixMigrations - " + msg)
+	// 		hasGap = true
+	// 		break
+	// 	}
+	// 	lastValidVersion = mv.Version
+	// }
+
+	migrationGaps, lastValidVersion := m.FindMigrationGaps(mvs, currentVersion)
+
+	if migrationGaps == nil {
+		fmt.Println("no gaps found")
 	}
 
-	if hasGap {
-		msg = fmt.Sprintf("migrating down to version %s", lastVersionBeforeGap)
+	if len(migrationGaps) > 0 {
+		msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
 		fmt.Println(msg)
 		m.App.Infolog.Println("fixMigrations - " + msg)
-		err = m.Migrate(migrator.DIRECTION_DOWN, lastVersionBeforeGap)
+		err = m.Migrate(migrator.DIRECTION_DOWN, lastValidVersion)
 		if err != nil {
 			return fmt.Errorf("fixMigrations - %s", err)
 		}

@@ -201,14 +201,29 @@ func (m Migrator) GetMigrationsToRun(mvs []models.MigrationVersion, currentVersi
 	return result, nil
 }
 
+func (m *Migrator) FindMigrationGaps(mvs []models.MigrationVersion, currentVersion string) (migrationGaps []models.MigrationVersion, lastValidVersion string) {
+	migrationGaps = make([]models.MigrationVersion, 0)
+	lastValidVersion = ""
+	for _, mv := range mvs {
+		if mv.Version >= currentVersion {
+			break
+		}
+
+		if !mv.ExistsInDB {
+			migrationGaps = append(migrationGaps, mv)
+		}
+		if len(migrationGaps) == 0 {
+			lastValidVersion = mv.Version
+		}
+	}
+
+	return
+}
+
 func (m *Migrator) Migrate(command, toVersion string) error {
 	var msg string
 	if command != COMMAND_UP && command != COMMAND_DOWN && command != COMMAND_FORCE {
 		return fmt.Errorf("migrate - %q is not a valid migration command", command)
-	}
-
-	if command == COMMAND_FORCE && toVersion == "" {
-		return errors.New("migrate - force migrations require a to version to be specified")
 	}
 
 	m.App.Infolog.Println("connecting to DB")
@@ -222,23 +237,23 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 		m.DBRepository.CloseDB()
 	}()
 
-	m.App.Infolog.Println("Migrate - successfully connected to DB")
+	m.App.Infolog.Println("migrate - successfully connected to DB")
 
 	err = m.DBRepository.SetupMigrationTable()
 	if err != nil {
 		return fmt.Errorf("migrate - %s", err)
 	}		
 	
-	// Get current version from db
-	currentVersion, err := m.DBRepository.CurrentVersion()
-	if err != nil {
-		return fmt.Errorf("migrate - %s", err)
-	}
-
 	mvs, err := m.GetMigrationVersionInfo()
 	if err != nil {
 		return fmt.Errorf("migrate - %s", err)
 	}
+
+	// Get current version from db
+	currentVersion, err := m.DBRepository.CurrentVersion()
+	if err != nil {
+		return fmt.Errorf("migrate - %s", err)
+	}	
 
 	if toVersion == "" && command == COMMAND_UP {
 		for i := len(mvs) -1; i >= 0; i-- {
@@ -250,6 +265,21 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 				break
 			}
 		}
+	}
+
+	// Check if toVersion exists
+	found := command == COMMAND_DOWN && toVersion == ""
+	if !found {
+		for _, mv := range mvs {
+			if mv.Version == toVersion {
+				found = true
+				break
+			}
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("migrate - migration version %s not found", toVersion)
 	}	
 	
 	var migrationDirection string	
@@ -275,6 +305,13 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 		}
 	}
 
+	if command == COMMAND_UP {
+		migrationGaps, _ := m.FindMigrationGaps(mvs, currentVersion)
+		if len(migrationGaps) > 0 {
+			return fmt.Errorf("migrate - up migrations not allowed when all older migrations have not been run")
+		}
+	}
+
 	// Find all migration files between the current version (excluded) and the new version (included)
 	migrationsToRun, err := m.GetMigrationsToRun(mvs, currentVersion, toVersion, migrationDirection)
 	if err != nil {
@@ -287,7 +324,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 			return fmt.Errorf("migrate - %s", err)
 		}
 	
-		msg = fmt.Sprintf("running migration %s", mv.Filename(migrationDirection))
+		msg = fmt.Sprintf("running %s migration %s", migrationDirection, mv.Filename(migrationDirection))
 		fmt.Print(msg)
 		err = m.DBRepository.MigrateData(mv.Version, string(data), migrationDirection)
 		if err != nil {
@@ -314,6 +351,10 @@ func (m Migrator) Down(version string) error {
 
 // Force migrates a DB to the migration specified by version
 func (m Migrator) Force(toVersion string) error {
+	if toVersion == "" {
+		return errors.New("force - force migrations require a to version to be specified")
+	}
+
 	return m.Migrate(COMMAND_FORCE, toVersion)
 }
 
