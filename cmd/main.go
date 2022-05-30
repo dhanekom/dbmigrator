@@ -20,6 +20,22 @@ var app config.AppConfig
 var infoLog *log.Logger
 var errorLog *log.Logger
 
+type Command struct {
+	command string
+	commandDesc string
+	usage string
+}
+
+var commands = []Command {
+	{migrator.COMMAND_CREATE, "create V", "Create up and down migration files prefixed with a timestamp"},
+	{migrator.COMMAND_UP, "up [V]", "Applies all up migrations or migrates up to version V"},
+	{migrator.COMMAND_DOWN, "down [V]", "Applies all down migrations or migrates down to version V"},
+	{migrator.COMMAND_GOTO, "goto V", "Migrates up or down to version V"},
+	{migrator.COMMAND_LIST, "list", "Lists migration details"},
+	{migrator.COMMAND_VERSION, "version", "Lists the current migration version"},
+	{migrator.COMMAND_FIX, "fix", "Finds older migrations that have not been executed and attempts to run them in a safe way"},
+}
+
 func main() {
 	// get arguments
 	var (
@@ -76,6 +92,19 @@ func main() {
 		tmpAllowFix := os.Getenv("DBMIGRATOR_ALLOW_FIX")
 		allowFix, _ = strconv.ParseBool(tmpAllowFix)
 	}
+
+	flag.Usage = func() {
+		w := flag.CommandLine.Output()
+		fmt.Fprintf(w, "Usage: dbmigrator FLAGS COMMAND [arg...]\n\n")
+		fmt.Fprintln(w, "Flags:")
+		flag.PrintDefaults()		
+		fmt.Fprintln(w, "\nCommands:")
+		var b strings.Builder
+		for _, cmd := range commands {
+			b.WriteString(fmt.Sprintf("  %-15s%s\n", cmd.commandDesc, cmd.usage))
+		}
+		fmt.Fprint(w, b.String(), "\n")
+	}	
 
 	flag.Parse()
 
@@ -185,7 +214,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = execute(myMigrator, command, commandAttr)
+	err = run(myMigrator, command, commandAttr)
 	if err != nil {
 		errorLog.Println(err)
 		fmt.Println(err)
@@ -193,19 +222,10 @@ func main() {
 	}
 }
 
-func execute(m *migrator.Migrator, command, commandAttr string) error {
+func run(m *migrator.Migrator, command, commandAttr string) error {
 	command = strings.ToLower(command)
 
 	m.App.Infolog.Printf("executed command %q with attributes %q", command, commandAttr)
-
-	// validCommands := make([]string, 0)
-	// validCommands = append(validCommands, migrator.COMMAND_CREATE);
-	// validCommands = append(validCommands, migrator.COMMAND_UP);
-	// validCommands = append(validCommands, migrator.COMMAND_DOWN);
-	// validCommands = append(validCommands, migrator.COMMAND_FORCE);
-	// validCommands = append(validCommands, migrator.COMMAND_LIST);
-	// validCommands = append(validCommands, migrator.COMMAND_FIX);
-	// validCommands = append(validCommands, migrator.COMMAND_VERSION);
 
 	switch command {
   case migrator.COMMAND_CREATE:
@@ -223,7 +243,7 @@ func execute(m *migrator.Migrator, command, commandAttr string) error {
 	case migrator.COMMAND_VERSION:
 		return listCurrentVersion(m)			
 	default:
-		return fmt.Errorf("%q is not a valid command. Valid commands are %q, %q, %q, %q", command, migrator.COMMAND_CREATE, migrator.COMMAND_UP, migrator.COMMAND_DOWN, migrator.COMMAND_GOTO)
+		return fmt.Errorf("%q is not a valid command. Please run the application with the -h parameter for more information", command)
 	}
 }
 
@@ -298,12 +318,12 @@ func fixMigrations(m *migrator.Migrator) error {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
-	// Check if there are migrations that are older that the current migration version that have not been run
 	currentVersion, err := m.CurrentVersion()
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
+	// Check if there are migrations that are older that the current migration version that have not been run	
 	migrationGaps, lastValidVersion := m.FindMigrationGaps(mvs, currentVersion)
 
 	if len(migrationGaps) == 0 {
@@ -353,7 +373,14 @@ func listCurrentVersion(m *migrator.Migrator) error {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
-	msg := fmt.Sprintf("current version: %s", currentVersion)
+	if currentVersion == "" {
+		msg := "no migration have been run yet"
+		fmt.Println(msg)
+		m.App.Infolog.Println(funcPrefix + " - " + msg)
+		return nil		
+	}
+
+	msg := currentVersion
 	fmt.Println(msg)
 	m.App.Infolog.Println(funcPrefix + " - " + msg)		
 
