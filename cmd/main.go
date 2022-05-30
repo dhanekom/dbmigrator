@@ -31,6 +31,7 @@ func main() {
 		dbPassword *string = new(string)
 		dbSSL *string = new(string)
 		migrationDir *string = new(string)
+		silentMode *bool
 		allowFix bool
 		logpath *string		
 	)
@@ -46,6 +47,7 @@ func main() {
 	dbSSL = flag.String("dbssl", "disable", "database sslsettings (disable, prefer, require)")
 	migrationDir = flag.String("migration_dir", "", "directory of migration files")
 	logpath = flag.String("log_path", "", "full path of log file")
+	silentMode = flag.Bool("s", false, "allow command to run without any confirmation prompts")
 
 	_, err := os.Stat(".env")
 	if err == nil {
@@ -103,6 +105,7 @@ func main() {
 	}
 
 	app.AllowFix = allowFix
+	app.SilentMode = *silentMode
 
 	appFilename := os.Args[0]
 	appFilenameExclExt := appFilename[:len(appFilename) - len(filepath.Ext(appFilename))]
@@ -211,8 +214,8 @@ func execute(m *migrator.Migrator, command, commandAttr string) error {
 		return m.Up(commandAttr)
 	case migrator.COMMAND_DOWN:
 		return m.Down(commandAttr)
-	case migrator.COMMAND_FORCE:
-		return m.Force(commandAttr)
+	case migrator.COMMAND_GOTO:
+		return m.Goto(commandAttr)
 	case migrator.COMMAND_LIST:
 		return listMigrationInfo(m)
 	case migrator.COMMAND_FIX:
@@ -220,7 +223,7 @@ func execute(m *migrator.Migrator, command, commandAttr string) error {
 	case migrator.COMMAND_VERSION:
 		return listCurrentVersion(m)			
 	default:
-		return fmt.Errorf("%q is not a valid command. Valid commands are %q, %q, %q, %q", command, migrator.COMMAND_CREATE, migrator.COMMAND_UP, migrator.COMMAND_DOWN, migrator.COMMAND_FORCE)
+		return fmt.Errorf("%q is not a valid command. Valid commands are %q, %q, %q, %q", command, migrator.COMMAND_CREATE, migrator.COMMAND_UP, migrator.COMMAND_DOWN, migrator.COMMAND_GOTO)
 	}
 }
 
@@ -266,6 +269,7 @@ func listMigrationInfo(m *migrator.Migrator) error {
 }
 
 func fixMigrations(m *migrator.Migrator) error {
+	funcPrefix := "fixMigrations"
 	if !m.App.AllowFix {
 		return fmt.Errorf("fix option has been disabled")
 	}
@@ -274,7 +278,7 @@ func fixMigrations(m *migrator.Migrator) error {
 	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
 	if err != nil {
-		return fmt.Errorf("fixMigrations - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
 	defer func(){
@@ -286,18 +290,18 @@ func fixMigrations(m *migrator.Migrator) error {
 
 	err = m.DBRepository.SetupMigrationTable()
 	if err != nil {
-		return fmt.Errorf("fixMigrations - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}	
 
 	mvs, err := m.GetMigrationVersionInfo()
 	if err != nil {
-		return fmt.Errorf("fixMigrations - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
 	// Check if there are migrations that are older that the current migration version that have not been run
 	currentVersion, err := m.CurrentVersion()
 	if err != nil {
-		return fmt.Errorf("fixMigrations - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
 	migrationGaps, lastValidVersion := m.FindMigrationGaps(mvs, currentVersion)
@@ -309,33 +313,34 @@ func fixMigrations(m *migrator.Migrator) error {
 
 	err = m.GetConfirmation(`please type 'yes' to continue with the fix or 'no' to cancel`, []string{"yes"})
 	if err != nil {
-		return fmt.Errorf("fixMigrations - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}	
 
 	msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
 	fmt.Println(msg)
-	m.App.Infolog.Println("fixMigrations - " + msg)
+	m.App.Infolog.Println(funcPrefix + " - " + msg)
 	err = m.Migrate(migrator.DIRECTION_DOWN, lastValidVersion)
 	if err != nil {
-		return fmt.Errorf("fixMigrations - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
 	msg = fmt.Sprintf("migrating up to previous current version %s", currentVersion)
 	fmt.Println(msg)
-	m.App.Infolog.Println("fixMigrations - " + msg)
+	m.App.Infolog.Println(funcPrefix + " - " + msg)
 	err = m.Migrate(migrator.DIRECTION_UP, currentVersion)
 	if err != nil {
-		return fmt.Errorf("fixMigrations - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
 	return nil
 }
 
 func listCurrentVersion(m *migrator.Migrator) error {
+	funcPrefix := "listCurrentVersion"
 	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
 	if err != nil {
-		return fmt.Errorf("listCurrentVersion - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
 	defer func(){
@@ -345,12 +350,12 @@ func listCurrentVersion(m *migrator.Migrator) error {
 
 	currentVersion, err := m.CurrentVersion()
 	if err != nil {
-		return fmt.Errorf("listCurrentVersion - %s", err)
+		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
 	msg := fmt.Sprintf("current version: %s", currentVersion)
 	fmt.Println(msg)
-	m.App.Infolog.Println("listCurrentVersion - " + msg)		
+	m.App.Infolog.Println(funcPrefix + " - " + msg)		
 
 	return nil
 }

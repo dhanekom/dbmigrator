@@ -8,4 +8,5 @@ type AppConfig struct {
 	Infolog  *log.Logger
 	Errorlog *log.Logger
 	AllowFix bool
+	SilentMode bool
 }
