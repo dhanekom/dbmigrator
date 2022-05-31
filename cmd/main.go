@@ -333,7 +333,8 @@ func fixMigrations(m *migrator.Migrator) error {
 		return nil
 	}
 
-	err = m.GetConfirmation(`please type 'yes' to continue with the fix or 'no' to cancel`, []string{"yes"})
+	err = m.GetConfirmation(fmt.Sprintf(`Fix is about to migrate down to version %s and back up to the current version.
+Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion), []string{"yes"})
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}	
