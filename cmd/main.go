@@ -279,10 +279,12 @@ func listMigrationInfo(m *migrator.Migrator) error {
 		}
 	}
 
-	fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", "Version", "Description", "Migrated", "Up Exists", "Down Exists")
-	fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", "-------", "-----------", "--------", "---------", "-----------")
+	lineFormat := "%-15s | %-30s | %-8s | %-9s | %-11s\n"
+
+	fmt.Printf(lineFormat, "Version", "Description", "Migrated", "Up Exists", "Down Exists")
+	fmt.Printf(lineFormat, "-------", "-----------", "--------", "---------", "-----------")
 	for _, mv := range mvs {
-		fmt.Printf("%-15s | %-30s | %-8s | %-9s | %-11s\n", mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
+		fmt.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
 	}
 
 	return nil
