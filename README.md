@@ -14,7 +14,7 @@ An app that helps you to easily migrate your DB structure.
 ## Termonology
 
 | Term            | Description                                                                                                                                                                                                          |
-| --------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | version         | A migration version uniquely identified a migration (set of up and down sql migration files). A version is contained in the first 15 characters of a set of up and down sql migration files (e.g. "20220601_124512") |
 | current version | The newers (highest) migration version that has been run. This can be found in the schema_migration table                                                                                                            |
 | migration gaps  | Migrations that are older than the current version and have not yet been run. The "fix" command should mostly be able to fix migration gaps                                                                          |
@@ -25,23 +25,24 @@ An app that helps you to easily migrate your DB structure.
 
 ## Command line flags
 
-| Flag           | Description                                                         |
-| -------------- | :------------------------------------------------------------------ |
-| -dbdriver      | database driver                                                     |
-| -dbname        | database name                                                       |
-| -dbssl         | database sslsettings (disable, prefer, require) (default "disable") |
-| -host          | database host IP or URL                                             |
-| -log_path      | full path of log file                                               |
-| -migration_dir | directory of migration files                                        |
-| -password      | database password                                                   |
-| -port          | database port                                                       |
-| -s             | allow command to run without any confirmation prompts               |
-| -user          | database username                                                   |
+| Flag           | ENV file param           | Default       | Description                                                         |
+| -------------- | ------------------------ | ------------- | ------------------------------------------------------------------- |
+| -dbdriver      | DBMIGRATOR_DB_DRIVER     |               | database driver                                                     |
+| -dbname        | DBMIGRATOR_DB_NAME       |               | database name                                                       |
+| -dbssl         | DBMIGRATOR_DB_SSL        |               | database sslsettings (disable, prefer, require) (default "disable") |
+| -host          | DBMIGRATOR_DB_HOST       |               | database host IP or URL                                             |
+| -log_path      | DBMIGRATOR_LOG_PATH      | [appname].log | full path of log file                                               |
+| -migration_dir | DBMIGRATOR_MIGRATION_DIR |               | directory of migration files                                        |
+| -password      | DBMIGRATOR_DB_PASSWORD   |               | database password                                                   |
+| -port          | DBMIGRATOR_DB_PORT       |               | database port                                                       |
+| -s             | N/A                      | false         | allow command to run without any confirmation prompts               |
+| -user          | DBMIGRATOR_DB_USERNAME   |               | database username                                                   |
+| N/A            | DBMIGRATOR_ALLOW_FIX     | false         | database username                                                   |
 
 ## Commands
 
 | Command  | Description                                                                               |
-| -------- | :---------------------------------------------------------------------------------------- |
+| -------- | ----------------------------------------------------------------------------------------- |
 | create V | Create up and down migration files with a timestamp and a description (V)                 |
 | up [V]   | Applies all up migrations or migrates up to version V                                     |
 | down [V] | Applies all down migrations or migrates down to version V                                 |
@@ -50,22 +51,9 @@ An app that helps you to easily migrate your DB structure.
 | version  | Lists the current migration version                                                       |
 | fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
 
-## .ENV file parameters
-
-DBMIGRATOR_DB_DRIVER  
-DBMIGRATOR_DB_HOST  
-DBMIGRATOR_DB_PORT  
-DBMIGRATOR_DB_NAME  
-DBMIGRATOR_DB_USERNAME  
-DBMIGRATOR_DB_PASSWORD  
-DBMIGRATOR_DB_SSL  
-DBMIGRATOR_MIGRATION_DIR  
-DBMIGRATOR_LOG_PATH  
-DBMIGRATOR_ALLOW_FIX
-
 ## Examples
 
-### running the application by only using flags:
+### passing in all configs using flags:
 
 <code>dbmigrator -dbdriver=postgres -host=127.0.0.1 -port=5432 -dbname=testdb -user=testuser -password=testpassword -log_path=c:\temp\log -migration_dir=c:\my_app_dir\migrations create</code>
 
