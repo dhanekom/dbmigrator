@@ -234,7 +234,7 @@ func run(m *migrator.Migrator, command, commandAttr string) error {
 	m.App.Infolog.Printf("executed command %q with attributes %q", command, commandAttr)
 
 	switch command {
-  case migrator.COMMAND_CREATE:
+	case migrator.COMMAND_CREATE:
 		return m.Create(commandAttr)
 	case migrator.COMMAND_UP:
 		return m.Up(commandAttr)
