@@ -18,7 +18,7 @@ An app that helps you to easily migrate DB structures.
 - Open terminal and navigate to the root directory of the repository
 - Run <code>go build -o [directory or application full path] .\cmd\dbmigrator\\.</code>
 
-## Termonology
+## Terminology
 
 | Term            | Description                                                                                                                                                                                                          |
 | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
