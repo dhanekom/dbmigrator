@@ -38,6 +38,7 @@ type DBRepo struct {
 }
 
 func NewDBRepo(dbdrivername string, connData DBConnectionData, a *config.AppConfig) (*DBRepo, error) {
+	dbdrivername = strings.ToUpper(dbdrivername)
 	dbrepo := DBRepo{
 		app: a,
 	}

@@ -74,6 +74,12 @@ func (m *Migrator) GetConfirmation(promptMsg string, trueValues []string) (error
 // Create creates an up and down migration file in the configured migration directory
 func (m Migrator) Create(desc string) error {
 	funcPrefix := "create"
+
+	desc = strings.ToLower(desc)
+	if desc == "" {
+		return errors.New(funcPrefix + " - a description is required")
+	}
+
 	// Check if Path exists and create dir if it does not exist
 	_, err := os.Stat(m.path)
 	if os.IsNotExist(err) {
@@ -81,7 +87,6 @@ func (m Migrator) Create(desc string) error {
 	}
 
 	// Generate up and down file names in the following format yyyymmddhhnnss_descriptions
-	desc = strings.ToLower(desc)
 	var sb strings.Builder
 	addUnderscore := false
 	for _, r := range desc {
@@ -99,7 +104,7 @@ func (m Migrator) Create(desc string) error {
 	desc = sb.String()
 
 	if strings.Trim(desc, " ") == "" {
-		return errors.New("create - migration name only contains invalid characters")
+		return errors.New(funcPrefix + " - migration name only contains invalid characters")
 	}
 
 	t := time.Now()

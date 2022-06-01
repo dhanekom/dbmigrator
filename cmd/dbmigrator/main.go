@@ -27,7 +27,7 @@ type Command struct {
 }
 
 var commands = []Command {
-	{migrator.COMMAND_CREATE, "create V", "Create up and down migration files prefixed with a timestamp"},
+	{migrator.COMMAND_CREATE, "create V", "Create up and down migration files with a timestamp and a description (V)"},
 	{migrator.COMMAND_UP, "up [V]", "Applies all up migrations or migrates up to version V"},
 	{migrator.COMMAND_DOWN, "down [V]", "Applies all down migrations or migrates down to version V"},
 	{migrator.COMMAND_GOTO, "goto V", "Migrates up or down to version V"},
@@ -206,6 +206,12 @@ func main() {
 		},
 		&app,
 	)
+
+	if err != nil {
+		errorLog.Println(err)
+		fmt.Println(err)
+		os.Exit(1)
+	}	
 
 	myMigrator, err := migrator.NewMigrator(*migrationDir, myDBRepo, &app)
 	if err != nil {
