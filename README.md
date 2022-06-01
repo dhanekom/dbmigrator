@@ -11,6 +11,13 @@ An app that helps you to easily migrate DB structures.
 - List migration details in a table
 - Configs can be specified by either command line arguments (flags) or by a .env file that is in the same directory as the executable. If configs are specified by both the command line arguments and the .env file then the command line arguments take preference
 
+## Building the cli application
+
+- Download and install Go (Golang): https://go.dev/dl/
+- Clone the repo
+- Open terminal and navigate to the root directory of the repository
+- Run <code>go build -o [directory or application full path] .\cmd\dbmigrator\.</code>
+
 ## Termonology
 
 | Term            | Description                                                                                                                                                                                                          |
