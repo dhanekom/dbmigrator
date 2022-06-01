@@ -1,6 +1,6 @@
 # dbmigrator
 
-An app that helps you to easily migrate your DB structure.
+An app that helps you to easily migrate DB structures.
 
 ## Features
 
@@ -84,11 +84,11 @@ An app that helps you to easily migrate your DB structure.
 
 runs all down migrations with a version number that is lower than the current version but only down to and including the specified version (20220501_120000 in this case)
 
-### list
+### list:
 
 <code>dbmigrator list</code> displays a table that provides an overview of all migration versions including their descriptions, whether they have been run and whether their up and down sql migration files could be found
 
-### version
+### version:
 
 <code>dbmigrator version</code> displays the current version
 
