@@ -9,18 +9,6 @@ An app that helps individuals and teams to easily upgrade database structures.
 - Postgres
 - MySQL
 
-## Commands
-
-| Command  | Description                                                                               |
-| -------- | ----------------------------------------------------------------------------------------- |
-| create V | Create up and down migration files with a timestamp and a description (V)                 |
-| up [V]   | Applies all up migrations or migrates up to version V                                     |
-| down [V] | Applies all down migrations or migrates down to version V                                 |
-| goto V   | Migrates up or down to version V                                                          |
-| list [N] | Lists all migration details or the last N migrations                                      |
-| version  | Lists the current migration version                                                       |
-| fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
-
 ## Features
 
 - Create up and down sql migration files
@@ -48,6 +36,18 @@ An app that helps individuals and teams to easily upgrade database structures.
 ## Usage
 
 <code>dbmigrator FLAGS COMMAND [arg...]</code>
+
+## Commands
+
+| Command  | Description                                                                               |
+| -------- | ----------------------------------------------------------------------------------------- |
+| create V | Create up and down migration files with a timestamp and a description (V)                 |
+| up [V]   | Applies all up migrations or migrates up to version V                                     |
+| down [V] | Applies all down migrations or migrates down to version V                                 |
+| goto V   | Migrates up or down to version V                                                          |
+| list [N] | Lists all migration details or the last N migrations                                      |
+| version  | Lists the current migration version                                                       |
+| fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
 
 ## Command line flags
 
