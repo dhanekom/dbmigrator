@@ -59,7 +59,7 @@ An app that helps individuals and teams to easily upgrade database structures.
 | up [V]   | Applies all up migrations or migrates up to version V                                     |
 | down [V] | Applies all down migrations or migrates down to version V                                 |
 | goto V   | Migrates up or down to version V                                                          |
-| list     | Lists migration details                                                                   |
+| list [N] | Lists all migration details or the last N migrations                                      |
 | version  | Lists the current migration version                                                       |
 | fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
 
