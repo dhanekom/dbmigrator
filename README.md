@@ -2,6 +2,8 @@
 
 An app that helps individuals and team to easily upgrade database structures.
 
+![](/docs/images/demo.gif)
+
 ## Tipical workflows
 
 ### Developer workflow
@@ -32,8 +34,6 @@ An app that helps individuals and team to easily upgrade database structures.
   <br><code>dbmigrator up</code><br>
   Note: You might want to send migration files that must not yet be run (e.g. if you want to send up and down mimigration files before updating the application(s) that uses your database). In this case you could upgrade to a specified migration version by running "dbmigrator up [version timestamp]".
   <br>E.g. <code>dbmigrator up 20221015_183738<></code><br>
-
-![](/docs/images/demo.gif)
 
 ## Supported databases
 
