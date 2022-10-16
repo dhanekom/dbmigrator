@@ -313,6 +313,10 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
 
+	if len(mvs) == 0 {
+		return errors.New(funcPrefix + " - no migrations found")
+	}
+
 	// Get current version from db
 	currentVersion, err := m.DBRepository.CurrentVersion()
 	if err != nil {

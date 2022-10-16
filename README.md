@@ -1,6 +1,11 @@
 # dbmigrator
 
-An app that helps you to easily migrate DB structures.
+An app that helps individuals and teams to easily upgrade database structures.
+
+## Supported databases
+
+- Postgres
+- MySQL
 
 ## Features
 

@@ -31,7 +31,7 @@ var commands = []Command {
 	{migrator.COMMAND_UP, "up [V]", "Applies all up migrations or migrates up to version V"},
 	{migrator.COMMAND_DOWN, "down [V]", "Applies all down migrations or migrates down to version V"},
 	{migrator.COMMAND_GOTO, "goto V", "Migrates up or down to version V"},
-	{migrator.COMMAND_LIST, "list", "Lists migration details"},
+	{migrator.COMMAND_LIST, "list [N]", "Lists all migration details or the last N migrations"},
 	{migrator.COMMAND_VERSION, "version", "Lists the current migration version"},
 	{migrator.COMMAND_FIX, "fix", "Finds older migrations that have not been executed and attempts to run them in a safe way"},
 }
@@ -243,7 +243,7 @@ func run(m *migrator.Migrator, command, commandAttr string) error {
 	case migrator.COMMAND_GOTO:
 		return m.Goto(commandAttr)
 	case migrator.COMMAND_LIST:
-		return listMigrationInfo(m)
+		return listMigrationInfo(m, commandAttr)
 	case migrator.COMMAND_FIX:
 		return fixMigrations(m)
 	case migrator.COMMAND_VERSION:
@@ -253,7 +253,8 @@ func run(m *migrator.Migrator, command, commandAttr string) error {
 	}
 }
 
-func listMigrationInfo(m *migrator.Migrator) error {
+func listMigrationInfo(m *migrator.Migrator, option string) error {
+
 	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
 	if err != nil {
@@ -277,6 +278,21 @@ func listMigrationInfo(m *migrator.Migrator) error {
 		return fmt.Errorf("list - %s", err)
 	}
 
+	var listFrom int
+	if strings.Trim(option, " ") == "" {
+		listFrom = 0
+	} else {
+		num, err := strconv.Atoi(option)
+		if err != nil {
+			return fmt.Errorf("list - A valid number is required")
+		}
+
+		listFrom = len(mvs) - num
+		if listFrom < 0 {
+			listFrom = 0
+		}
+	} 
+
 	getBoolStr := func(value bool, TrueStr, FalseStr string) string {
 		if value {
 			return TrueStr
@@ -289,7 +305,9 @@ func listMigrationInfo(m *migrator.Migrator) error {
 
 	fmt.Printf(lineFormat, "Version", "Description", "Migrated", "Up Exists", "Down Exists")
 	fmt.Printf(lineFormat, "-------", "-----------", "--------", "---------", "-----------")
-	for _, mv := range mvs {
+	// for _, mv := range mvs {
+	for i := listFrom; i <= len(mvs) - 1; i++{
+	  mv := mvs[i]
 		fmt.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
 	}
 

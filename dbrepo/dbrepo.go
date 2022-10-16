@@ -11,6 +11,7 @@ import (
 
 const (
 	DBDRIVER_POSTGRES = "POSTGRES"
+	DBDRIVER_MYSQL = "MYSQL"
 )
 
 type DBConnectionData struct {
@@ -46,8 +47,11 @@ func NewDBRepo(dbdrivername string, connData DBConnectionData, a *config.AppConf
 	case DBDRIVER_POSTGRES:
 		dbrepo.driver = &PostgresDBDriver{}
 		dbrepo.connectionData = connData
+	case DBDRIVER_MYSQL:
+		dbrepo.driver = &MySQLDBDriver{}
+		dbrepo.connectionData = connData		
 	default:
-		return nil, fmt.Errorf("ConnectToDB - %q is not a valid DB Driver Name. Value must be one of the following (%s)", dbdrivername, DBDRIVER_POSTGRES)
+		return nil, fmt.Errorf("ConnectToDB - %q is not a valid DB Driver Name. Value must be one of the following (%s)", dbdrivername, fmt.Sprintf("%s, %s", DBDRIVER_POSTGRES, DBDRIVER_MYSQL))
 	}	
 
 	return &dbrepo, nil
