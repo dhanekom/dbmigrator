@@ -2,10 +2,24 @@
 
 An app that helps individuals and teams to easily upgrade database structures.
 
+![](/docs/images/demo.gif)
+
 ## Supported databases
 
 - Postgres
 - MySQL
+
+## Commands
+
+| Command  | Description                                                                               |
+| -------- | ----------------------------------------------------------------------------------------- |
+| create V | Create up and down migration files with a timestamp and a description (V)                 |
+| up [V]   | Applies all up migrations or migrates up to version V                                     |
+| down [V] | Applies all down migrations or migrates down to version V                                 |
+| goto V   | Migrates up or down to version V                                                          |
+| list [N] | Lists all migration details or the last N migrations                                      |
+| version  | Lists the current migration version                                                       |
+| fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
 
 ## Features
 
@@ -50,18 +64,6 @@ An app that helps individuals and teams to easily upgrade database structures.
 | -s             | N/A                      | false         | allow command to run without any confirmation prompts               |
 | -user          | DBMIGRATOR_DB_USERNAME   |               | database username                                                   |
 | N/A            | DBMIGRATOR_ALLOW_FIX     | false         | database username                                                   |
-
-## Commands
-
-| Command  | Description                                                                               |
-| -------- | ----------------------------------------------------------------------------------------- |
-| create V | Create up and down migration files with a timestamp and a description (V)                 |
-| up [V]   | Applies all up migrations or migrates up to version V                                     |
-| down [V] | Applies all down migrations or migrates down to version V                                 |
-| goto V   | Migrates up or down to version V                                                          |
-| list [N] | Lists all migration details or the last N migrations                                      |
-| version  | Lists the current migration version                                                       |
-| fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
 
 ## Examples
 
