@@ -9,15 +9,17 @@ An app that helps individuals and team to easily upgrade database structures.
 ### Developer workflow
 
 - Add a .env file to the path from which the dbmigrator app will be executed. See the "Command line flags" section below (specifically the "ENV file param" column). Configure these values in the .env file.
-- Developer A - Wants to add a city table to the database. An up and down migration file is added the the migration_path
+  <br><br>
+- Developer A - Wants to add a city table to the database. An up and down migration file is added to the migration_path
   <br><code>dbmigrator create add_city</code>
-- Developer A - Adds a CREATE TABLE SQL statement to the up migration file and a DROP TABLE SQL statement to the down migration file.
-- Developer A - Runs all up migrations that have to yet been run (or specifies to which migration version to upgrade the database)
+- Developer A - Adds e.g. a CREATE TABLE SQL statement to the up migration file and a DROP TABLE SQL statement to the down migration file.
+- Developer A - Runs all up migrations that have to yet been run
   <br><code>dbmigrator up</code>
-- Developer A - Check migrations. A list is displayed of all migration files and the "Migrated" column indicated that a migration has been applied to the database.
+- Developer A - List migrations to check. The "list" command lists all migration files and the "Migrated" column indicates whether a migration has been applied to the database.
   <br><code>dbmigrator list</code>
-- Developer A - Commits the new migrations files (in the migration_path) to version control and pushed to the remote version control host.
-- Developer B - Pulls from the remote version control source (the add_city up and down migration files are pulled)
+- Developer A - Commits the new migration files (in the migration_path) to version control and pushed to the remote version control host.
+  <br><br>
+- Developer B - Pulls from the remote version control (the add_city up and down migration files are pulled)
 - Developer B - Upgrades local database (the add_city migration is run and the city table is created)
   <br><code>dbmigrator up</code>
 - Developer B - wants to add a country table to the database
@@ -28,11 +30,11 @@ An app that helps individuals and team to easily upgrade database structures.
 
 ### Production workflow
 
-- Add a .env file to the path from which the dbmigrator app will be executed. See the "Command line flags" section below (specifically the "ENV file param" column). Configure these values in the .env file. Note that all parameters can be configured via command line flags (see below). Note that command line flags take precedence over .env file parameters.
-- Send the up and down migration files in the migration_path (It is import to keep this folder up to date to ensure that migrations are executed in the correct order)
+- Add a .env file to the path from which the dbmigrator app will be executed. See the "Command line flags" section below (specifically the "ENV file param" column). Configure these values in the .env file. Note that all parameters can be configured via command line flags (see below). Also note that command line flags take precedence over .env file parameters.
+- Send the up and down migration files to the migration_path (It is import to keep this folder up to date to ensure that migrations are executed in the correct order)
 - Upgrade the database structure by running the up migrations.
   <br><code>dbmigrator up</code><br>
-  Note: You might want to send migration files that must not yet be run (e.g. if you want to send up and down mimigration files before updating the application(s) that uses your database). In this case you could upgrade to a specified migration version by running "dbmigrator up [version timestamp]".
+  Note: You might want to send migration files that must not yet be run (e.g. if you want to send up and down migration files before updating the application(s) that uses your database). In this case you could upgrade to a specified migration version by running "dbmigrator up [version timestamp]".
   <br>E.g. <code>dbmigrator up 20221015_183738<></code><br>
 
 ## Supported databases
