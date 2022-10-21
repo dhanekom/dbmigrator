@@ -1,6 +1,6 @@
 # dbmigrator
 
-An app that helps individuals and teams to easily upgrade database structures.
+A Go based application that helps you migrate database structures.
 
 ![](/docs/images/demo.gif)
 
