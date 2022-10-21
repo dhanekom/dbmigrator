@@ -56,7 +56,7 @@ An app that helps individuals and teams to easily upgrade database structures.
 - Download and install Go (Golang): https://go.dev/dl/
 - Clone the repo
 - Open terminal and navigate to the root directory of the repository
-- Run <code>go mod tify</code> to pull all dependencies
+- Run <code>go mod tidy</code> to pull all dependencies
 - Run <code>go build -o [directory or application full path] .\cmd\dbmigrator\\.</code>
 
 ## Terminology
