@@ -83,8 +83,8 @@ A Go based application that helps you migrate database structures.
 - Add a .env file to the path from which the dbmigrator app will be executed. See the "Command line flags" section below (specifically the "ENV file param" column). Configure these values in the .env file.
   <br><br>
   Developer A - Wants to add a city table to the database
-  <br><code>
-- dbmigrator create add_city</code>
+  <br>
+- <code>dbmigrator create add_city</code>
 - Developer A - Adds e.g. a CREATE TABLE SQL statement to the up migration file and a DROP TABLE SQL statement to the down migration file.
 - Developer A - Runs all up migrations that have to yet been run
   <br><code>dbmigrator up</code>
