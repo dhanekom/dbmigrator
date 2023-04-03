@@ -6,33 +6,32 @@ A Go based application that helps you migrate database structures.
 
 ## Supported databases
 
-- Postgres
+- PostgreSQL
 - MySQL
 
 ## Features
 
 - Create up and down sql migration files
-- Migrate DB structure up or down by running sql files
-- Keeps track of all migrations that have been run so that migration gaps (see termonology below) can be identified
-- Assist users with fixing migration gaps
-- List migration details in a table
+- Migrate DB structure up or down by running SQL files
+- Assist users with fixing migration gaps (E.g. if migrations no 1 and 3 have been executed and after you do a git pull you find a migration no 2 that was added by another user)
+- List migration details in a table format
 - Configs can be specified by either command line arguments (flags) or by a .env file that is in the same directory as the executable. If configs are specified by both the command line arguments and the .env file then the command line arguments take preference
 
 ## Building the cli application
 
 - Download and install Go (Golang): https://go.dev/dl/
-- Clone the repo
+- Clone this git repo
 - Open terminal and navigate to the root directory of the repository
 - Run <code>go mod tidy</code> to pull all dependencies
 - Run <code>go build -o [directory or application full path] .\cmd\dbmigrator\\.</code>
 
 ## Terminology
 
-| Term            | Description                                                                                                                                                                                                          |
-| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| version         | A migration version uniquely identified a migration (set of up and down sql migration files). A version is contained in the first 15 characters of a set of up and down sql migration files (e.g. "20220601_124512") |
-| current version | The newers (highest) migration version that has been run. This can be found in the schema_migration table                                                                                                            |
-| migration gaps  | Migrations that are older than the current version and have not yet been run. The "fix" command should mostly be able to fix migration gaps                                                                          |
+| Term            | Description                                                                                                                                                                             |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| version         | A migration version uniquely identifies a migration (a pair of up and down sql migration files). A version refers to a timestamp in the format YYYYMMDD_HHNNSS (e.g. "20220601_124512") |
+| current version | The newers (highest) migration version that has been run. This can be found in the schema_migration table                                                                               |
+| migration gaps  | Migrations that are older than the current version and have not yet been run. The "fix" command should mostly be able to fix migration gaps                                             |
 
 ## Usage
 
@@ -72,8 +71,9 @@ A Go based application that helps you migrate database structures.
 
 - Add a .env file to the path from which the dbmigrator app will be executed. See the "Command line flags" section below (specifically the "ENV file param" column). Configure these values in the .env file.
   <br><br>
-- Developer A - Wants to add a city table to the database. An up and down migration file is added to the migration_path
-  <br><code>dbmigrator create add_city</code>
+  Developer A - Wants to add a city table to the database
+  <br><code>
+- dbmigrator create add_city</code>
 - Developer A - Adds e.g. a CREATE TABLE SQL statement to the up migration file and a DROP TABLE SQL statement to the down migration file.
 - Developer A - Runs all up migrations that have to yet been run
   <br><code>dbmigrator up</code>
@@ -103,9 +103,9 @@ A Go based application that helps you migrate database structures.
 
 ### passing in all configs using flags:
 
-<code>dbmigrator -dbdriver=postgres -host=127.0.0.1 -port=5432 -dbname=testdb -user=testuser -password=testpassword -log_path=c:\temp\log -migration_dir=c:\my_app_dir\migrations create</code>
+<code>dbmigrator -dbdriver=postgres -host=127.0.0.1 -port=5432 -dbname=testdb -user=testuser -password=testpassword -log_path=c:\temp\log -migration_path=c:\my_app_dir\migrations create</code>
 
-<code>dbmigrator -dbdriver=postgres -host=127.0.0.1 -port=5432 -dbname=testdb -user=testuser -password=testpassword -log_path=c:\temp\log -migration_dir=c:\my_app_dir\migrations up 20220601_124512</code>
+<code>dbmigrator -dbdriver=postgres -host=127.0.0.1 -port=5432 -dbname=testdb -user=testuser -password=testpassword -log_path=c:\temp\log -migration_path=c:\my_app_dir\migrations up 20220601_124512</code>
 
 ### create:
 

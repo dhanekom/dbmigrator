@@ -46,7 +46,7 @@ func main() {
 		dbUser *string = new(string)
 		dbPassword *string = new(string)
 		dbSSL *string = new(string)
-		migrationDir *string = new(string)
+		migrationPath *string = new(string)
 		silentMode *bool
 		allowFix bool
 		logpath *string		
@@ -61,7 +61,7 @@ func main() {
 	dbUser = flag.String("user", "", "database username")
 	dbPassword = flag.String("password", "", "database password")
 	dbSSL = flag.String("dbssl", "disable", "database sslsettings (disable, prefer, require)")
-	migrationDir = flag.String("migration_path", "", "directory containing migration files")
+	migrationPath = flag.String("migration_path", "", "directory containing migration files")
 	logpath = flag.String("log_path", "", "full path of log file")
 	silentMode = flag.Bool("s", false, "allow command to run without any confirmation prompts")
 
@@ -87,7 +87,7 @@ func main() {
 		loadParam(dbUser, "DBMIGRATOR_DB_USERNAME", false)
 		loadParam(dbPassword, "DBMIGRATOR_DB_PASSWORD", false)
 		loadParam(dbSSL, "DBMIGRATOR_DB_SSL", true)
-		loadParam(migrationDir, "DBMIGRATOR_MIGRATION_PATH", false)
+		loadParam(migrationPath, "DBMIGRATOR_MIGRATION_PATH", false)
 		loadParam(logpath, "DBMIGRATOR_LOG_PATH", false)
 		tmpAllowFix := os.Getenv("DBMIGRATOR_ALLOW_FIX")
 		allowFix, _ = strconv.ParseBool(tmpAllowFix)
@@ -121,7 +121,7 @@ func main() {
 	checkAndAddMissingParams("dbName", *dbName)
 	checkAndAddMissingParams("user", *dbUser)
 	checkAndAddMissingParams("password", *dbPassword)
-	checkAndAddMissingParams("migration_path", *migrationDir)
+	checkAndAddMissingParams("migration_path", *migrationPath)
 
 	if len(missingParams) > 0 {
 		var tmpErrStr string
@@ -166,8 +166,8 @@ func main() {
 	}
 	defer logFile.Close()
 
-	if _, err := os.Stat(*migrationDir); os.IsNotExist(err) {
-		err = os.MkdirAll(*migrationDir, 0666)
+	if _, err := os.Stat(*migrationPath); os.IsNotExist(err) {
+		err = os.MkdirAll(*migrationPath, 0666)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -213,7 +213,7 @@ func main() {
 		os.Exit(1)
 	}	
 
-	myMigrator, err := migrator.NewMigrator(*migrationDir, myDBRepo, &app)
+	myMigrator, err := migrator.NewMigrator(*migrationPath, myDBRepo, &app)
 	if err != nil {
 		errorLog.Println(err)
 		fmt.Println(err)
