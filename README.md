@@ -48,6 +48,7 @@ A Go based application that helps you migrate database structures.
 | list [N] | Lists all migration details or the last N migrations                                      |
 | version  | Lists the current migration version                                                       |
 | fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
+| force V  | Sets the current migration version without running any migrations                         |
 
 ## Command line flags
 

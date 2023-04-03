@@ -34,6 +34,7 @@ var commands = []Command {
 	{migrator.COMMAND_LIST, "list [N]", "Lists all migration details or the last N migrations"},
 	{migrator.COMMAND_VERSION, "version", "Lists the current migration version"},
 	{migrator.COMMAND_FIX, "fix", "Finds older migrations that have not been executed and attempts to run them in a safe way"},
+	{migrator.COMMAND_FORCE, "force", "Sets the current migration version without running any migrations"},
 }
 
 func main() {
@@ -242,12 +243,14 @@ func run(m *migrator.Migrator, command, commandAttr string) error {
 		return m.Down(commandAttr)
 	case migrator.COMMAND_GOTO:
 		return m.Goto(commandAttr)
+	case migrator.COMMAND_FORCE:
+		return m.Force(commandAttr)
 	case migrator.COMMAND_LIST:
 		return listMigrationInfo(m, commandAttr)
 	case migrator.COMMAND_FIX:
 		return fixMigrations(m)
 	case migrator.COMMAND_VERSION:
-		return listCurrentVersion(m)			
+		return listCurrentVersion(m)		
 	default:
 		return fmt.Errorf("%q is not a valid command. Please run the application with the -h parameter for more information", command)
 	}
@@ -305,7 +308,7 @@ func listMigrationInfo(m *migrator.Migrator, option string) error {
 
 	fmt.Printf(lineFormat, "Version", "Description", "Migrated", "Up Exists", "Down Exists")
 	fmt.Printf(lineFormat, "-------", "-----------", "--------", "---------", "-----------")
-	// for _, mv := range mvs {
+
 	for i := listFrom; i <= len(mvs) - 1; i++{
 	  mv := mvs[i]
 		fmt.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))

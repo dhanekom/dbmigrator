@@ -89,7 +89,7 @@ func (r DBRepo) SetupMigrationTable() error {
 	return nil
 }
 
-func (r DBRepo) migrateDB(toVersion, migrationDirection string) error {
+func (r DBRepo) MigrateDB(toVersion, migrationDirection string) error {
 	stmt, err := r.driver.MigrateDBSQL(migrationDirection)
 	if err != nil {
 		return fmt.Errorf("migrateDB - %s", err)
@@ -117,7 +117,7 @@ func (r DBRepo) MigrateData(toVersion, script, migrationDirection string) error 
 		return fmt.Errorf("migrateData - version %s - %s", toVersion, err)
 	}
 
-	err = r.migrateDB(toVersion, migrationDirection)
+	err = r.MigrateDB(toVersion, migrationDirection)
 	if err != nil {
 		return fmt.Errorf("migrateData - version %s - Admin script - %s", toVersion, err)
 	}
