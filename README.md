@@ -68,14 +68,10 @@ A Go based application that helps you migrate database structures.
 
 ## Command line exit codes
 
-| Code | Description       |
-| ---- | ----------------- |
-| 0    | Success           |
-| 1    | System Error      |
-| 2    | Invalid Configs   |
-| 3    | Invalid Params    |
-| 4    | DB error          |
-| 5    | User cancellation |
+| Code | Description |
+| ---- | ----------- |
+| 0    | Success     |
+| 1    | Error       |
 
 ## Tipical workflows
 

@@ -64,7 +64,7 @@ func main() {
 
 	allowFix = false
 	
-	dbDrivername = flag.String("dbdriver", "", fmt.Sprintf("database driver"))
+	dbDrivername = flag.String("dbdriver", "", "database driver")
 	dbHost = flag.String("host", "", "database host IP or URL")
 	dbPort = flag.String("port", "", "database port")
 	dbName = flag.String("dbname", "", "database name")
