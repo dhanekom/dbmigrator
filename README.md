@@ -66,6 +66,17 @@ A Go based application that helps you migrate database structures.
 | -user           | DBMIGRATOR_DB_USERNAME    |               | database username                                                   |
 | N/A             | DBMIGRATOR_ALLOW_FIX      | false         | database username                                                   |
 
+## Command line exit codes
+
+| Code | Description       |
+| ---- | ----------------- |
+| 0    | Success           |
+| 1    | System Error      |
+| 2    | Invalid Configs   |
+| 3    | Invalid Params    |
+| 4    | DB error          |
+| 5    | User cancellation |
+
 ## Tipical workflows
 
 ### Developer workflow
@@ -73,8 +84,8 @@ A Go based application that helps you migrate database structures.
 - Add a .env file to the path from which the dbmigrator app will be executed. See the "Command line flags" section below (specifically the "ENV file param" column). Configure these values in the .env file.
   <br><br>
   Developer A - Wants to add a city table to the database
-  <br><code>
-- dbmigrator create add_city</code>
+  <br>
+- <code>dbmigrator create add_city</code>
 - Developer A - Adds e.g. a CREATE TABLE SQL statement to the up migration file and a DROP TABLE SQL statement to the down migration file.
 - Developer A - Runs all up migrations that have to yet been run
   <br><code>dbmigrator up</code>
