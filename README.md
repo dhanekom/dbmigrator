@@ -65,6 +65,17 @@ A Go based application that helps you migrate database structures.
 | -user           | DBMIGRATOR_DB_USERNAME    |               | database username                                                   |
 | N/A             | DBMIGRATOR_ALLOW_FIX      | false         | database username                                                   |
 
+## Command line exit codes
+
+| Code | Description       |
+| ---- | ----------------- |
+| 0    | Success           |
+| 1    | System Error      |
+| 2    | Invalid Configs   |
+| 3    | Invalid Params    |
+| 4    | DB error          |
+| 5    | User cancellation |
+
 ## Tipical workflows
 
 ### Developer workflow

@@ -24,6 +24,27 @@ type Migrator struct {
 	confirmationProvided bool
 }
 
+type ErrorCancelled struct {err string}
+type ErrorSystem struct {err string}
+type ErrorInvalidParam struct {err string}
+type ErrorDB struct {err string}
+
+func (e *ErrorCancelled) Error() string {
+  return e.err
+}
+
+func (e *ErrorSystem) Error() string {
+  return e.err
+}
+
+func (e *ErrorInvalidParam) Error() string {
+	return e.err
+}
+
+func (e *ErrorDB) Error() string {
+	return e.err
+}
+
 const (
 	COMMAND_CREATE = "create"
 	COMMAND_UP = "up"
@@ -64,7 +85,7 @@ func (m *Migrator) GetConfirmation(promptMsg string, trueValues []string) (error
 	fmt.Printf("%s: ", promptMsg)
 	_, err := fmt.Scanf("%s", &answer)
 	if err != nil || answer != "yes" {
-		return errors.New("command cancelled")
+		return &ErrorCancelled{"command cancelled"}
 	}
 
 	m.confirmationProvided = true
@@ -73,11 +94,9 @@ func (m *Migrator) GetConfirmation(promptMsg string, trueValues []string) (error
 
 // Create creates an up and down migration file in the configured migration directory
 func (m Migrator) Create(desc string) error {
-	funcPrefix := "create"
-
 	desc = strings.ToLower(desc)
 	if desc == "" {
-		return errors.New(funcPrefix + " - a description is required")
+		return &ErrorInvalidParam{"create - a description is required"}
 	}
 
 	// Check if Path exists and create dir if it does not exist
@@ -104,7 +123,7 @@ func (m Migrator) Create(desc string) error {
 	desc = sb.String()
 
 	if strings.Trim(desc, " ") == "" {
-		return errors.New(funcPrefix + " - migration name only contains invalid characters")
+		return &ErrorInvalidParam{"create - migration name only contains invalid characters"}
 	}
 
 	t := time.Now()
@@ -112,12 +131,12 @@ func (m Migrator) Create(desc string) error {
 
   mvs, err := m.GetMigrationVersionInfoMap()
 	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
+		return fmt.Errorf("create - %s", err)
 	}
 
 	for _, mv := range mvs {
 		if desc == mv.Version {
-			return fmt.Errorf(funcPrefix + " - migration files with prefix %q already exist", desc)
+			return &ErrorInvalidParam{fmt.Sprintf("create - migration files with prefix %q already exist", desc)}
 		}
 	}
 
@@ -125,7 +144,7 @@ func (m Migrator) Create(desc string) error {
 	fmt.Printf("creating %s\n", tmpFilepath)
 	file, err := os.Create(tmpFilepath)
 	if err != nil {
-		return fmt.Errorf("create - %s", err)
+		return &ErrorSystem{fmt.Sprintf("create - %s", err)}
 	}
 	file.Close()
 
@@ -133,7 +152,7 @@ func (m Migrator) Create(desc string) error {
 	fmt.Printf("creating %s\n", tmpFilepath)
 	file, err = os.Create(tmpFilepath)
 	if err != nil {
-		return fmt.Errorf("create - %s", err)
+		return &ErrorSystem{fmt.Sprintf("create - %s", err)}
 	}
 	file.Close()
 
@@ -143,19 +162,17 @@ func (m Migrator) Create(desc string) error {
 // GetMigrationVersionInfoMap reads all files in the migration directory and parses the filenames to determine
 // all the migration vesions and descriptions. There details are return in a map of models.MigrationVersion items
 func (m Migrator) GetMigrationVersionInfoMap() (map[string]*models.MigrationVersion, error) {
-	funcPrefix := "GetMigrationVersionInfoMap"	
-
 	mvs := make(map[string]*models.MigrationVersion, 0)
 	files, err := ioutil.ReadDir(m.path)
 	if err != nil {
-		return nil, fmt.Errorf(funcPrefix + " - getting migration filenames - %s", err)
+		return nil, &ErrorSystem{fmt.Sprintf("GetMigrationVersionInfoMap - getting migration filenames - %s", err)}
 	}
 
 	for _, file := range files {
 		matches := re.FindAllStringSubmatch(file.Name(), -1)
 
 		if matches == nil {
-			m.App.Infolog.Printf(funcPrefix + " - unable to parse seperate parts of filename %s\n", file.Name())
+			m.App.Infolog.Printf("GetMigrationVersionInfoMap - unable to parse seperate parts of filename %s\n", file.Name())
 			continue
 		}
 
@@ -174,12 +191,12 @@ func (m Migrator) GetMigrationVersionInfoMap() (map[string]*models.MigrationVers
 
 		if direction == DIRECTION_UP {
 			if mv.UpFileExists {
-				return nil, fmt.Errorf(funcPrefix + "more than one up migration file found for migration version %s", mv.Version)
+				return nil, &ErrorSystem{fmt.Sprintf("GetMigrationVersionInfoMap - more than one up migration file found for migration version %s", mv.Version)}
 			}
 			mv.UpFileExists = true
 		} else if direction == DIRECTION_DOWN {
 			if mv.DownFileExists {
-				return nil, fmt.Errorf(funcPrefix + "more than one down migration file found for migration version %s", mv.Version)
+				return nil, &ErrorSystem{fmt.Sprintf("GetMigrationVersionInfoMap - more than one down migration file found for migration version %s", mv.Version)}
 			}
 			mv.DownFileExists = true
 		}
@@ -190,19 +207,17 @@ func (m Migrator) GetMigrationVersionInfoMap() (map[string]*models.MigrationVers
 
 // GetMigrationVersionInfo gathers details of all migrated versions and migrations files
 func (m Migrator) GetMigrationVersionInfo() ([]models.MigrationVersion, error) {
-	funcPrefix := "getMigrationVersionInfo"
-
 	m.App.Infolog.Println("gathering migration version info")
 	result := make([]models.MigrationVersion, 0)
 
   mvs, err := m.GetMigrationVersionInfoMap()
 	if err != nil {
-		return nil, fmt.Errorf(funcPrefix + " - %s", err)
+		return nil, &ErrorSystem{fmt.Sprintf("getMigrationVersionInfo - %s", err)}
 	}		
 
 	migratedVersions, err := m.DBRepository.MigratedVersions()
 	if err != nil {
-		return nil, fmt.Errorf(funcPrefix + " - %s", err)
+		return nil, &ErrorDB{fmt.Sprintf("getMigrationVersionInfo - %s", err)}
 	}	
 
 	for _, migratedVersion := range migratedVersions {
@@ -231,14 +246,13 @@ func (m Migrator) GetMigrationVersionInfo() ([]models.MigrationVersion, error) {
 
 // GetMigrationsToRun determines which migrations must be run and returns the result as a slice of models.MigrationVersion
 func (m Migrator) GetMigrationsToRun(mvs []models.MigrationVersion, currentVersion, toVersion, migrationDirection string) ([]models.MigrationVersion, error) {
-	funcPrefix := "getMigrationsToRun"
 	m.App.Infolog.Println("determining migrations to run")
 	result := make([]models.MigrationVersion, 0)
 
 	if migrationDirection == DIRECTION_UP && currentVersion >= toVersion {
-		return result, fmt.Errorf(funcPrefix + " - to version must be higher than the current version")
+		return result, &ErrorInvalidParam{"getMigrationsToRun - to version must be higher than the current version"}
 	} else if migrationDirection == DIRECTION_DOWN && toVersion >= currentVersion {
-		return result, fmt.Errorf(funcPrefix + " - to version must be lower than the current version")
+		return result, &ErrorInvalidParam{"getMigrationsToRun - to version must be lower than the current version"}
 	}
 
 	if migrationDirection == DIRECTION_UP {
@@ -284,43 +298,45 @@ func (m *Migrator) FindMigrationGaps(mvs []models.MigrationVersion, currentVersi
 
 // Migrate migrates a db from the current version to the specified toVersion
 func (m *Migrator) Migrate(command, toVersion string) error {
-	funcPrefix := "migrate"
 	var msg string
 	if command != COMMAND_UP && command != COMMAND_DOWN && command != COMMAND_GOTO {
-		return fmt.Errorf(funcPrefix + " - %q is not a valid migration command", command)
+		return &ErrorInvalidParam{fmt.Sprintf("migrate - %q is not a valid migration command", command)}
 	}
 
 	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
 	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
+		return &ErrorDB{fmt.Sprintf("migrate - %s", err)}
 	}
 
 	defer func(){
-		m.App.Infolog.Println(funcPrefix + " - closing DB")
+		m.App.Infolog.Println("migrate - closing DB")
 		m.DBRepository.CloseDB()
 	}()
 
-	m.App.Infolog.Println(funcPrefix + " - successfully connected to DB")
+	m.App.Infolog.Println("migrate - successfully connected to DB")
 
 	err = m.DBRepository.SetupMigrationTable()
 	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
+		return &ErrorDB{fmt.Sprintf("migrate - %s", err)}
 	}		
 	
 	mvs, err := m.GetMigrationVersionInfo()
 	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
+		return &ErrorDB{fmt.Sprintf("migrate - %s", err)}
 	}
 
 	if len(mvs) == 0 {
-		return errors.New(funcPrefix + " - no migrations found")
+		msg = "no migrations found"
+		fmt.Println(msg)
+		m.App.Infolog.Println("migrate - " + msg)
+		return nil		
 	}
 
 	// Get current version from db
 	currentVersion, err := m.DBRepository.CurrentVersion()
 	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
+		return &ErrorDB{fmt.Sprintf("migrate - %s", err)}
 	}
 
 	if toVersion == "" && command == COMMAND_UP {
@@ -329,7 +345,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 				toVersion = mvs[i].Version
 				msg = fmt.Sprintf("migrating up to version %s", toVersion)
 				fmt.Println(msg)			
-				m.App.Infolog.Println(funcPrefix + " - " +msg)
+				m.App.Infolog.Println("migrate - " +msg)
 				break
 			}
 		}
@@ -347,7 +363,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 	}
 
 	if !found {
-		return fmt.Errorf(funcPrefix + " - migration version %s not found", toVersion)
+		return &ErrorInvalidParam{fmt.Sprintf("migrate - migration version %s not found", toVersion)}
 	}	
 	
 	var migrationDirection string	
@@ -355,57 +371,58 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 		migrationDirection = DIRECTION_UP
 	} else {
 		migrationDirection = DIRECTION_DOWN
+	}
+
+	if toVersion >= currentVersion {
+		migrationGaps, _ := m.FindMigrationGaps(mvs, currentVersion)
+		if len(migrationGaps) > 0 {
+			return &ErrorInvalidParam{"migrate - up migrations not allowed when all older migrations have not been run"}
+		}
 	}	
 
 	if toVersion == currentVersion {
 		msg = "db already migrated to the newest version"
 		fmt.Println(msg)
-		m.App.Infolog.Println(funcPrefix + " - " + msg)
+		m.App.Infolog.Println("migrate - " + msg)
 		return nil
 	}
 	// Determine migration direction. If e.g. version > current version then an up is required
 	if command != COMMAND_GOTO && command != migrationDirection {
 		if command == COMMAND_UP {
-			return fmt.Errorf(funcPrefix + " - up migration now allowed because the current db version is higher than %s", toVersion)
+			return &ErrorInvalidParam{fmt.Sprintf("migrate - up migration now allowed because the current db version is higher than %s", toVersion)}
 		} else {
-			return fmt.Errorf(funcPrefix + " - down migration now allowed because the current db version is lower than %s", toVersion)
-		}
-	}
-
-	if command == COMMAND_UP {
-		migrationGaps, _ := m.FindMigrationGaps(mvs, currentVersion)
-		if len(migrationGaps) > 0 {
-			return fmt.Errorf(funcPrefix + " - up migrations not allowed when all older migrations have not been run")
+			return &ErrorInvalidParam{fmt.Sprintf("migrate - down migration now allowed because the current db version is lower than %s", toVersion)}
 		}
 	}
 
 	// Find all migration files between the current version (excluded) and the new version (included)
 	migrationsToRun, err := m.GetMigrationsToRun(mvs, currentVersion, toVersion, migrationDirection)
 	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
+		return fmt.Errorf("migrate - %s", err)
 	}
 
 	if len(migrationsToRun) > 0 && migrationDirection == DIRECTION_DOWN && !m.confirmationProvided {
 		err := m.GetConfirmation(`please type 'yes' to continue or 'no' to cancel`, []string{"yes"})
 		if err != nil {
-			return fmt.Errorf(funcPrefix + " - %s", err)
+			return &ErrorCancelled{fmt.Sprintf("migrate - %s", err)}
 		}
 	}
 
 	for _, mv := range migrationsToRun {
 		data, err := ioutil.ReadFile(filepath.Join(m.path, mv.Filename(migrationDirection)))
 		if err != nil {
-			return fmt.Errorf(funcPrefix + " - %s", err)
+			return &ErrorSystem{fmt.Sprintf("migrate - %s", err)}
 		}
 	
 		msg = fmt.Sprintf("running %s migration %s", migrationDirection, mv.Filename(migrationDirection))
 		fmt.Print(msg)
 		err = m.DBRepository.MigrateData(mv.Version, string(data), migrationDirection)
 		if err != nil {
-			return fmt.Errorf(funcPrefix + " - %s", err)
-		}	
+			return &ErrorDB{fmt.Sprintf("migrate - %s", err)}
+		}
+
 		fmt.Println(" - success")
-		msg = funcPrefix + " - " + msg + " - success"
+		msg = "migrate - " + msg + " - success"
 		m.App.Infolog.Println(msg)
 	}
 
@@ -435,7 +452,7 @@ func (m Migrator) Goto(toVersion string) error {
 func (m Migrator) CurrentVersion() (string, error) {
 	version, err := m.DBRepository.CurrentVersion()
 	if err != nil {
-		return "", fmt.Errorf("currentVersion - %s", err)
+		return "", &ErrorDB{fmt.Sprintf("currentVersion - %s", err)}
 	}
 
 	return version, nil

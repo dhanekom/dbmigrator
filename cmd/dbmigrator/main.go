@@ -16,6 +16,15 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const (
+	EXIT_CODE_SUCCESS = 0
+	EXIT_CODE_ERROR_SYSTEM = 1
+	EXIT_CODE_ERROR_INVALID_CONFIG = 2
+	EXIT_CODE_ERROR_INVALID_PARAM = 3
+	EXIT_CODE_ERROR_DB = 4
+	EXIT_CODE_ERROR_CANCELLED = 5
+)
+
 var app config.AppConfig
 var infoLog *log.Logger
 var errorLog *log.Logger
@@ -70,7 +79,7 @@ func main() {
 		err := godotenv.Load()
 		if err != nil {
 			fmt.Printf("error loading .env file - %s", err)
-			os.Exit(1)
+			os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
 		}
 		
 		loadParam := func(value *string, envParamName string, useEnvValueIfProvided bool) {
@@ -130,7 +139,7 @@ func main() {
 		}
 
 		fmt.Printf("The following required parameters are missing:\n%sPlease run the application with the -h parameter for more information", tmpErrStr)
-		os.Exit(1)
+		os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
 	}
 
 	app.AllowFix = allowFix
@@ -142,7 +151,7 @@ func main() {
 	exPath, err := os.Executable()
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(EXIT_CODE_ERROR_SYSTEM)
 	}
 
 	exPath = path.Dir(exPath)
@@ -162,7 +171,7 @@ func main() {
 	logFile, err := os.OpenFile(*logpath, os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(EXIT_CODE_ERROR_SYSTEM)
 	}
 	defer logFile.Close()
 
@@ -182,7 +191,7 @@ func main() {
 	var command, commandAttr string
 	if len(flag.Args()) -1 > 2 {
 		fmt.Printf("a max of 2 trailing attributes (a command and an optional command attribute) is allow. %d arguments found - %v", len(flag.Args()),  strings.Join(flag.Args(), ","))
-		os.Exit(1)
+		os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
 	}
 	for i, arg := range flag.Args() {
 		switch i {
@@ -190,7 +199,7 @@ func main() {
 		case 1: commandAttr = arg
 		default:
 			fmt.Println("too many trailing attributes found")
-			os.Exit(1)
+			os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
 		}
 	}
 
@@ -210,21 +219,30 @@ func main() {
 	if err != nil {
 		errorLog.Println(err)
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
 	}	
 
 	myMigrator, err := migrator.NewMigrator(*migrationPath, myDBRepo, &app)
 	if err != nil {
 		errorLog.Println(err)
 		fmt.Println(err)
-		os.Exit(1)
+		os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
 	}
 
 	err = run(myMigrator, command, commandAttr)
 	if err != nil {
 		errorLog.Println(err)
-		fmt.Println(err)
-		os.Exit(1)
+		fmt.Println(err)		
+
+		if _, ok := err.(*migrator.ErrorInvalidParam); ok {
+			os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
+		} else if _, ok := err.(*migrator.ErrorDB); ok {
+			os.Exit(EXIT_CODE_ERROR_DB)
+			} else if _, ok := err.(*migrator.ErrorCancelled); ok {
+				os.Exit(EXIT_CODE_ERROR_CANCELLED)
+		} else {
+			os.Exit(EXIT_CODE_ERROR_SYSTEM)
+		}
 	}
 }
 
