@@ -1,0 +1,14 @@
+# https://taskfile.dev
+
+version: '3'
+
+tasks:
+  default:
+    cmds:
+      - task -l
+    silent: true
+  build:
+    desc: "Build 32bit dbmigrator.exe and place it in c:\\grppos"
+    cmds:
+      - set GOARCH=386
+      - go build -ldflags="-s -w" -o c:\\grppos\\dbmigrator.exe .\\cmd\\dbmigrator\\.

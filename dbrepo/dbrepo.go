@@ -58,6 +58,7 @@ func NewDBRepo(dbdrivername string, connData DBConnectionData, a *config.AppConf
 }
 
 func (r *DBRepo) ConnectToDB() (error) {
+	r.app.Infolog.Printf("connecting to DB %s on %s:%s", r.connectionData.DBName, r.connectionData.DBHost, r.connectionData.DBPort)
 	myDB, err := r.driver.Open(r.connectionData)
 	if err != nil {
 		return fmt.Errorf("ConnectToDB - %s", err)

@@ -37,13 +37,15 @@ type Command struct {
 
 var commands = []Command {
 	{migrator.COMMAND_CREATE, "create V", "Create up and down migration files with a timestamp and a description (V)"},
-	{migrator.COMMAND_UP, "up [V]", "Applies all up migrations or migrates up to version V"},
-	{migrator.COMMAND_DOWN, "down [V]", "Applies all down migrations or migrates down to version V"},
+	{migrator.COMMAND_UP, "up [N]", "Applies all or N up migrations"},
+	{migrator.COMMAND_DOWN, "down [N]", "Applies all or N down migrations"},
 	{migrator.COMMAND_GOTO, "goto V", "Migrates up or down to version V"},
-	{migrator.COMMAND_LIST, "list [N]", "Lists all migration details or the last N migrations"},
+	{migrator.COMMAND_UPTO, "upto V", "Migrates up to version V"},
+	{migrator.COMMAND_DOWNTO, "downto V", "Migrates down to version V"},		
+	{migrator.COMMAND_LIST, "list [N]", "Lists all or the last N migrations"},
 	{migrator.COMMAND_VERSION, "version", "Lists the current migration version"},
 	{migrator.COMMAND_FIX, "fix", "Finds older migrations that have not been executed and attempts to run them in a safe way"},
-	{migrator.COMMAND_FORCE, "force", "Sets the current migration version without running any migrations"},
+	{migrator.COMMAND_FORCE, "force V", "Sets the current migration version without running any migrations"},
 }
 
 func main() {
@@ -79,7 +81,7 @@ func main() {
 	if err == nil {
 		err := godotenv.Load()
 		if err != nil {
-			fmt.Printf("error loading .env file - %s", err)
+			migrator.Fmt_error.Printf("error loading .env file - %s", err)
 			os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
 		}
 		
@@ -139,7 +141,7 @@ func main() {
 			tmpErrStr = tmpErrStr + fmt.Sprintln(v)
 		}
 
-		fmt.Printf("The following required parameters are missing:\n%sPlease run the application with the -h parameter for more information", tmpErrStr)
+		migrator.Fmt_error.Printf("The following required parameters are missing:\n%sPlease run the application with the -h parameter for more information\n", tmpErrStr)
 		os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
 	}
 
@@ -151,7 +153,7 @@ func main() {
 
 	exPath, err := os.Executable()
 	if err != nil {
-		fmt.Println(err)
+		migrator.Fmt_error.Println(err)
 		os.Exit(EXIT_CODE_ERROR_SYSTEM)
 	}
 
@@ -171,7 +173,7 @@ func main() {
 	// logFilename := appFilenameExclExt + ".log"
 	logFile, err := os.OpenFile(*logpath, os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
-		fmt.Println(err)
+		migrator.Fmt_error.Println(err)
 		os.Exit(EXIT_CODE_ERROR_SYSTEM)
 	}
 	defer logFile.Close()
@@ -191,7 +193,7 @@ func main() {
 
 	var command, commandAttr string
 	if len(flag.Args()) -1 > 2 {
-		fmt.Printf("a max of 2 trailing attributes (a command and an optional command attribute) is allow. %d arguments found - %v", len(flag.Args()),  strings.Join(flag.Args(), ","))
+		migrator.Fmt_error.Printf("a max of 2 trailing attributes (a command and an optional command attribute) is allow. %d arguments found - %v", len(flag.Args()),  strings.Join(flag.Args(), ","))
 		os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
 	}
 	for i, arg := range flag.Args() {
@@ -199,7 +201,7 @@ func main() {
 		case 0: command = arg
 		case 1: commandAttr = arg
 		default:
-			fmt.Println("too many trailing attributes found")
+			migrator.Fmt_error.Println("too many trailing attributes found")
 			os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
 		}
 	}
@@ -219,21 +221,21 @@ func main() {
 
 	if err != nil {
 		errorLog.Println(err)
-		fmt.Println(err)
+		migrator.Fmt_error.Println(err)
 		os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
 	}	
 
 	myMigrator, err := migrator.NewMigrator(*migrationPath, myDBRepo, &app)
 	if err != nil {
 		errorLog.Println(err)
-		fmt.Println(err)
+		migrator.Fmt_error.Println(err)
 		os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
 	}
 
 	err = run(myMigrator, command, commandAttr)
 	if err != nil {
 		errorLog.Println(err)
-		fmt.Println(err)		
+		migrator.Fmt_error.Println(err)		
 		os.Exit(1)
 	}
 }
@@ -252,6 +254,10 @@ func run(m *migrator.Migrator, command, commandAttr string) error {
 		return m.Down(commandAttr)
 	case migrator.COMMAND_GOTO:
 		return m.Goto(commandAttr)
+	case migrator.COMMAND_UPTO:
+		return m.Upto(commandAttr)
+	case migrator.COMMAND_DOWNTO:
+		return m.Downto(commandAttr)		
 	case migrator.COMMAND_FORCE:
 		return m.Force(commandAttr)
 	case migrator.COMMAND_LIST:
@@ -266,8 +272,6 @@ func run(m *migrator.Migrator, command, commandAttr string) error {
 }
 
 func listMigrationInfo(m *migrator.Migrator, option string) error {
-
-	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
 	if err != nil {
 		return fmt.Errorf("list - %s", err)
@@ -333,7 +337,6 @@ func fixMigrations(m *migrator.Migrator) error {
 	}
 
 	var msg string
-	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
@@ -365,7 +368,7 @@ func fixMigrations(m *migrator.Migrator) error {
 	migrationGaps, lastValidVersion := m.FindMigrationGaps(mvs, currentVersion)
 
 	if len(migrationGaps) == 0 {
-		fmt.Println("no migration gaps found. Nothing to fix")
+		migrator.Fmt_success.Println("no migration gaps found. Nothing to fix")
 		return nil
 	}
 
@@ -396,7 +399,6 @@ Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion)
 
 func listCurrentVersion(m *migrator.Migrator) error {
 	funcPrefix := "listCurrentVersion"
-	m.App.Infolog.Println("connecting to DB")
 	err := m.DBRepository.ConnectToDB()
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
@@ -414,7 +416,7 @@ func listCurrentVersion(m *migrator.Migrator) error {
 
 	if currentVersion == "" {
 		msg := "no migration have been run yet"
-		fmt.Println(msg)
+		migrator.Fmt_warning.Println(msg)
 		m.App.Infolog.Println(funcPrefix + " - " + msg)
 		return nil		
 	}

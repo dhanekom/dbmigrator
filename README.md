@@ -42,10 +42,12 @@ A Go based application that helps you migrate database structures.
 | Command  | Description                                                                               |
 | -------- | ----------------------------------------------------------------------------------------- |
 | create V | Create up and down migration files with a timestamp and a description (V)                 |
-| up [V]   | Applies all up migrations or migrates up to version V                                     |
-| down [V] | Applies all down migrations or migrates down to version V                                 |
+| up [N]   | Applies all or N up migrations                                                            |
+| down [N] | Applies all or N down migrations                                                          |
 | goto V   | Migrates up or down to version V                                                          |
-| list [N] | Lists all migration details or the last N migrations                                      |
+| upto V   | Migrates up to version V V                                                                |
+| downto V | Migrates down to version V V                                                              |
+| list [N] | Lists all or the last N migrations                                                        |
 | version  | Lists the current migration version                                                       |
 | fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
 | force V  | Sets the current migration version without running any migrations                         |
@@ -126,13 +128,13 @@ A Go based application that helps you migrate database structures.
 
 <code>dbmigrator up</code> runs all migrations with a version that is higher than the current version
 
-<code>dbmigrator up 20220601_124512</code> runs all up migrations with a version that is higher than the current version but only up to the specified version (20220601_124512 in this case)
+<code>dbmigrator up 3</code> runs the next 3 available up migrations. If less then 3 up migrations are available then only the available up migrations will be executed.
 
 ### down:
 
 <code>dbmigrator down</code> runs all down migrations with a version number that is lower than the current version
 
-<code>dbmigrator down 20220501_120000</code> runs all down migrations with a version number that is lower than the current version but only down to and including the specified version (20220501_120000 in this case)
+<code>dbmigrator down 3</code> runs the next 3 available down migrations. If less then 3 down migrations are available then only the available down migrations will be executed.
 
 ### goto:
 

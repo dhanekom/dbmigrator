@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -15,6 +17,13 @@ import (
 	"github.com/dhanekom/dbmigrator/config"
 	"github.com/dhanekom/dbmigrator/dbrepo"
 	"github.com/dhanekom/dbmigrator/models"
+	"github.com/fatih/color"
+)
+
+var (
+	Fmt_success = color.New(color.FgGreen, color.Bold)
+	Fmt_warning = color.New(color.FgYellow, color.Bold)
+	Fmt_error = color.New(color.FgRed, color.Bold)
 )
 
 type Migrator struct {
@@ -28,6 +37,8 @@ const (
 	COMMAND_CREATE = "create"
 	COMMAND_UP = "up"
 	COMMAND_DOWN = "down"
+	COMMAND_UPTO = "upto"
+	COMMAND_DOWNTO = "downto"	
 	COMMAND_GOTO = "goto"
 	COMMAND_LIST = "list"
 	COMMAND_VERSION = "version"
@@ -287,16 +298,30 @@ func (m *Migrator) FindMigrationGaps(mvs []models.MigrationVersion, currentVersi
 func (m *Migrator) Migrate(command, toVersion string) error {
 	funcPrefix := "migrate"
 	var msg string
-	if command != COMMAND_UP && command != COMMAND_DOWN && command != COMMAND_GOTO && command != COMMAND_FORCE {
+  var NoOfMigrations int = 0
+	var err error
+
+	if command != COMMAND_UP && command != COMMAND_UPTO && command != COMMAND_DOWN && command != COMMAND_DOWNTO && command != COMMAND_GOTO && command != COMMAND_FORCE {
 		return fmt.Errorf(funcPrefix + " - %q is not a valid migration command", command)
 	}
 
-	if (command == COMMAND_GOTO || command == COMMAND_FORCE) && toVersion == "" {
+	if (command == COMMAND_UP || command == COMMAND_DOWN) && toVersion != "" {
+		NoOfMigrations, err = strconv.Atoi(toVersion)
+		if err != nil || NoOfMigrations < 1 || NoOfMigrations > 9999999 {
+			return fmt.Errorf(funcPrefix + " - a valid number of migrations [N] is required", command)		
+		}
+
+		NoOfMigrations = int(math.Abs(float64(NoOfMigrations)))
+		if command == COMMAND_DOWN {
+			NoOfMigrations = NoOfMigrations * -1
+		}
+	}
+
+	if (command == COMMAND_GOTO || command == COMMAND_UPTO || command == COMMAND_DOWNTO || command == COMMAND_FORCE) && toVersion == "" {
 		return fmt.Errorf(funcPrefix + " - the %s command requires a to version to be specified", command)		
 	} 	
 
-	m.App.Infolog.Println("connecting to DB")
-	err := m.DBRepository.ConnectToDB()
+	err = m.DBRepository.ConnectToDB()
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
@@ -320,7 +345,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 
 	if len(mvs) == 0 {
 		msg = "no migrations found"
-		fmt.Println(msg)
+		Fmt_warning.Println(msg)
 		m.App.Infolog.Println("migrate - " + msg)
 		return nil		
 	}	
@@ -329,6 +354,39 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 	currentVersion, err := m.DBRepository.CurrentVersion()
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
+	}
+
+	if NoOfMigrations != 0 {
+		toVersion = ""
+		if NoOfMigrations > 0 {
+			for i := 0; i <= len(mvs) -1; i++ {
+				if mvs[i].Version <= currentVersion {
+					continue
+				}
+
+				toVersion = mvs[i].Version
+				NoOfMigrations = NoOfMigrations - 1
+				if NoOfMigrations <= 0 {
+					break
+				}
+			}
+		} else {
+			for i := len(mvs) -1; i >= 0; i-- {
+				if mvs[i].Version >= currentVersion {
+					continue
+				}
+
+				toVersion = mvs[i].Version
+				NoOfMigrations = NoOfMigrations + 1
+				if NoOfMigrations >= 0 {
+					break
+				}
+		
+				if i == 0 {
+					toVersion = ""
+				}
+			}
+		}
 	}
 
 	if toVersion == "" && command == COMMAND_UP {
@@ -341,7 +399,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 				break
 			}
 		}
-	}
+	}	
 
 	// Check if toVersion exists
 	found := command == COMMAND_DOWN && toVersion == ""
@@ -356,7 +414,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 
 	if !found {
 		return fmt.Errorf(funcPrefix + " - migration version %s not found", toVersion)
-	}	
+	}
 	
 	var migrationDirection string	
 	if toVersion > currentVersion {
@@ -374,17 +432,27 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 
 	if toVersion == currentVersion {
 		msg = "db already migrated to the newest version"
-		fmt.Println(msg)
+		Fmt_success.Println(msg)
 		m.App.Infolog.Println(funcPrefix + " - " + msg)
 		return nil
 	}
 
 	// Determine migration direction. If e.g. version > current version then an up is required
-	if command != COMMAND_GOTO && command != COMMAND_FORCE && command != migrationDirection {
-		if command == COMMAND_UP {
-			return fmt.Errorf(funcPrefix + " - up migration now allowed because the current db version is higher than %s", toVersion)
+	
+  if (command == COMMAND_UP || command == COMMAND_DOWN || command == COMMAND_UPTO || command == COMMAND_DOWNTO) {
+		var commandDirection string
+		if command == COMMAND_UP || command == COMMAND_UPTO	 {
+			commandDirection = DIRECTION_UP
 		} else {
-			return fmt.Errorf(funcPrefix + " - down migration now allowed because the current db version is lower than %s", toVersion)
+			commandDirection = DIRECTION_DOWN
+		}
+
+		if commandDirection != migrationDirection {
+			if command == COMMAND_UP || command == COMMAND_UPTO {
+				return fmt.Errorf(funcPrefix + " - up migration now allowed because the current db version is higher than %s", toVersion)
+			} else if command == COMMAND_DOWN || command == COMMAND_DOWNTO {
+				return fmt.Errorf(funcPrefix + " - down migration now allowed because the current db version is lower than %s", toVersion)
+			}
 		}
 	}
 
@@ -422,16 +490,17 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 			fmt.Print(msg)
 			err = m.DBRepository.MigrateData(mv.Version, string(data), migrationDirection)
 			if err != nil {
+				Fmt_error.Println(" - failed")
 				return fmt.Errorf(funcPrefix + " - %s", err)
 			}	
-			fmt.Println(" - success")
+			Fmt_success.Println(" - success")
 			msg = funcPrefix + " - " + msg + " - success"
 			m.App.Infolog.Println(msg)
 		}
 	}
 
 	if command == COMMAND_FORCE {
-		fmt.Println(" - success")
+		Fmt_success.Println(" - success")
 		msg = funcPrefix + " - " + msg + " - success"
 		m.App.Infolog.Println(msg)
 	}	
@@ -439,15 +508,26 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 	return nil
 }
 
-// Up migrates a DB up to the version if the version is higher than the current version
+// Up migrates a DB up for N number of migrations
 func (m Migrator) Up(toVersion string) error {
 	return m.Migrate(COMMAND_UP, toVersion)
 }
 
-// Down migrates a DB down to the version if the version is lower than the current version
+// Down migrates a DB down for N number of migrations
 func (m Migrator) Down(toVersion string) error {
 	return m.Migrate(COMMAND_DOWN, toVersion)
 }
+
+// Upto migrates a DB up to the version if the version is higher than the current version
+func (m Migrator) Upto(toVersion string) error {
+	return m.Migrate(COMMAND_UPTO, toVersion)
+}
+
+// Down migrates a DB down to the version if the version is lower than the current version
+func (m Migrator) Downto(toVersion string) error {
+	return m.Migrate(COMMAND_DOWNTO, toVersion)
+}
+
 
 // Goto migrates a DB to the migration specified by version
 func (m Migrator) Goto(toVersion string) error {
