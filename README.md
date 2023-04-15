@@ -45,8 +45,8 @@ A Go based application that helps you migrate database structures.
 | up [N]   | Applies all or N up migrations                                                            |
 | down [N] | Applies all or N down migrations                                                          |
 | goto V   | Migrates up or down to version V                                                          |
-| upto V   | Migrates up to version V                                                                  |
-| downto V | Migrates down to version V                                                                |
+| upto V   | Migrates up to version V (prevents accidental down migrations)                            |
+| downto V | Migrates down to version V (prevents accidental up migrations)                            |
 | list [N] | Lists all or the last N migrations                                                        |
 | version  | Lists the current migration version                                                       |
 | fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |

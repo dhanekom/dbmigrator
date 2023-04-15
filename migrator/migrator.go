@@ -449,9 +449,9 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 
 		if commandDirection != migrationDirection {
 			if command == COMMAND_UP || command == COMMAND_UPTO {
-				return fmt.Errorf(funcPrefix + " - up migration now allowed because the current db version is higher than %s", toVersion)
+				return fmt.Errorf(funcPrefix + " - up migration not allowed because the current db version (%s) is higher than %s", currentVersion, toVersion)
 			} else if command == COMMAND_DOWN || command == COMMAND_DOWNTO {
-				return fmt.Errorf(funcPrefix + " - down migration now allowed because the current db version is lower than %s", toVersion)
+				return fmt.Errorf(funcPrefix + " - down migration not allowed because the current db version (%s) is lower than %s", currentVersion, toVersion)
 			}
 		}
 	}
