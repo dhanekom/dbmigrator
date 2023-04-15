@@ -26,6 +26,7 @@ func (d *MySQLDBDriver) Open(dbConnData DBConnectionData) (*sql.DB, error){
 func (d *MySQLDBDriver) SetupMigrationTableSQL() string {
 	return `CREATE TABLE IF NOT EXISTS schema_migration (
 		version varchar(15) NOT null,
+		created_on datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
 		UNIQUE INDEX schema_migration_version_idx (version)
 	);`
 }

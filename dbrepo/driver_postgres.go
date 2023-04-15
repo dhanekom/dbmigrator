@@ -27,9 +27,11 @@ func (d *PostgresDBDriver) Open(dbConnData DBConnectionData) (*sql.DB, error){
 
 func (d *PostgresDBDriver) SetupMigrationTableSQL() string {
 	return `CREATE TABLE IF NOT EXISTS public.schema_migration (
-		"version" varchar(15) NOT NULL
+		"version" varchar(15) NOT NULL,
+		"created_on" timestamp(6) NOT NULL DEFAULT now()
 	);
-	CREATE UNIQUE INDEX IF NOT EXISTS schema_migration_version_idx ON public.schema_migration USING btree (version);`
+	CREATE UNIQUE INDEX IF NOT EXISTS schema_migration_version_idx ON public.schema_migration USING btree (version);
+	ALTER TABLE public.schema_migration ADD COLUMN IF NOT EXISTS "created_on" timestamp(6) NOT NULL DEFAULT now();`
 }
 
 func (d *PostgresDBDriver) MigrateDBSQL(migrationDirection string) (string, error) {

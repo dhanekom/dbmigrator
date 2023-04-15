@@ -16,15 +16,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-const (
-	EXIT_CODE_SUCCESS = 0
-	EXIT_CODE_ERROR_SYSTEM = 1
-	EXIT_CODE_ERROR_INVALID_CONFIG = 2
-	EXIT_CODE_ERROR_INVALID_PARAM = 3
-	EXIT_CODE_ERROR_DB = 4
-	EXIT_CODE_ERROR_CANCELLED = 5
-)
-
 var app config.AppConfig
 var infoLog *log.Logger
 var errorLog *log.Logger
@@ -82,7 +73,7 @@ func main() {
 		err := godotenv.Load()
 		if err != nil {
 			migrator.Fmt_error.Printf("error loading .env file - %s", err)
-			os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
+			os.Exit(1)
 		}
 		
 		loadParam := func(value *string, envParamName string, useEnvValueIfProvided bool) {
@@ -142,7 +133,7 @@ func main() {
 		}
 
 		migrator.Fmt_error.Printf("The following required parameters are missing:\n%sPlease run the application with the -h parameter for more information\n", tmpErrStr)
-		os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
+		os.Exit(1)
 	}
 
 	app.AllowFix = allowFix
@@ -154,7 +145,7 @@ func main() {
 	exPath, err := os.Executable()
 	if err != nil {
 		migrator.Fmt_error.Println(err)
-		os.Exit(EXIT_CODE_ERROR_SYSTEM)
+		os.Exit(1)
 	}
 
 	exPath = path.Dir(exPath)
@@ -174,7 +165,7 @@ func main() {
 	logFile, err := os.OpenFile(*logpath, os.O_APPEND|os.O_CREATE, 0666)
 	if err != nil {
 		migrator.Fmt_error.Println(err)
-		os.Exit(EXIT_CODE_ERROR_SYSTEM)
+		os.Exit(1)
 	}
 	defer logFile.Close()
 
@@ -194,7 +185,7 @@ func main() {
 	var command, commandAttr string
 	if len(flag.Args()) -1 > 2 {
 		migrator.Fmt_error.Printf("a max of 2 trailing attributes (a command and an optional command attribute) is allow. %d arguments found - %v", len(flag.Args()),  strings.Join(flag.Args(), ","))
-		os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
+		os.Exit(1)
 	}
 	for i, arg := range flag.Args() {
 		switch i {
@@ -202,7 +193,7 @@ func main() {
 		case 1: commandAttr = arg
 		default:
 			migrator.Fmt_error.Println("too many trailing attributes found")
-			os.Exit(EXIT_CODE_ERROR_INVALID_PARAM)
+			os.Exit(1)
 		}
 	}
 
@@ -222,14 +213,14 @@ func main() {
 	if err != nil {
 		errorLog.Println(err)
 		migrator.Fmt_error.Println(err)
-		os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
+		os.Exit(1)
 	}	
 
 	myMigrator, err := migrator.NewMigrator(*migrationPath, myDBRepo, &app)
 	if err != nil {
 		errorLog.Println(err)
 		migrator.Fmt_error.Println(err)
-		os.Exit(EXIT_CODE_ERROR_INVALID_CONFIG)
+		os.Exit(1)
 	}
 
 	err = run(myMigrator, command, commandAttr)
@@ -294,6 +285,13 @@ func listMigrationInfo(m *migrator.Migrator, option string) error {
 		return fmt.Errorf("list - %s", err)
 	}
 
+	currentVersion, err := m.CurrentVersion()
+	if err != nil {
+		return fmt.Errorf("list - %s", err)
+	}	
+
+	migrationGaps, _ := m.FindMigrationGaps(mvs, currentVersion)	
+
 	var listFrom int
 	if strings.Trim(option, " ") == "" {
 		listFrom = 0
@@ -324,7 +322,13 @@ func listMigrationInfo(m *migrator.Migrator, option string) error {
 
 	for i := listFrom; i <= len(mvs) - 1; i++{
 	  mv := mvs[i]
-		fmt.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
+		if _, ok := migrationGaps[mv.Version]; ok {
+			migrator.Fmt_highlight.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
+		} else if mv.Version == currentVersion {
+			migrator.Fmt_success.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))		
+		} else {
+			fmt.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
+		}
 	}
 
 	return nil
@@ -381,7 +385,7 @@ Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion)
 	msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
 	fmt.Println(msg)
 	m.App.Infolog.Println(funcPrefix + " - " + msg)
-	err = m.Migrate(migrator.DIRECTION_DOWN, lastValidVersion)
+	err = m.Migrate(migrator.COMMAND_DOWNTO, lastValidVersion)
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
@@ -389,7 +393,7 @@ Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion)
 	msg = fmt.Sprintf("migrating up to previous current version %s", currentVersion)
 	fmt.Println(msg)
 	m.App.Infolog.Println(funcPrefix + " - " + msg)
-	err = m.Migrate(migrator.DIRECTION_UP, currentVersion)
+	err = m.Migrate(migrator.COMMAND_UPTO, currentVersion)
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}
@@ -416,7 +420,7 @@ func listCurrentVersion(m *migrator.Migrator) error {
 
 	if currentVersion == "" {
 		msg := "no migration have been run yet"
-		migrator.Fmt_warning.Println(msg)
+		migrator.Fmt_highlight.Println(msg)
 		m.App.Infolog.Println(funcPrefix + " - " + msg)
 		return nil		
 	}

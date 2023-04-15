@@ -22,8 +22,8 @@ import (
 
 var (
 	Fmt_success = color.New(color.FgGreen, color.Bold)
-	Fmt_warning = color.New(color.FgYellow, color.Bold)
 	Fmt_error = color.New(color.FgRed, color.Bold)
+	Fmt_highlight = color.New(color.FgYellow, color.Bold)
 )
 
 type Migrator struct {
@@ -73,7 +73,7 @@ func (m *Migrator) GetConfirmation(promptMsg string, trueValues []string) (error
 	}
 
   var answer string
-	fmt.Printf("%s: ", promptMsg)
+	Fmt_highlight.Printf("%s: ", promptMsg)
 	_, err := fmt.Scanf("%s", &answer)
 	if err != nil || answer != "yes" {
 		return errors.New("command cancelled")
@@ -275,8 +275,8 @@ func (m Migrator) GetMigrationsToRun(mvs []models.MigrationVersion, currentVersi
 // FindMigrationGaps finds all migrations that are older than the current migration version and have not yet been run
 // and returns them as a slice of models.MigrationVersion. The last migration version (lastValidVersion) that was migrated
 // before the oldest migration gap version is also returned as this is usefull for the fix command
-func (m *Migrator) FindMigrationGaps(mvs []models.MigrationVersion, currentVersion string) (migrationGaps []models.MigrationVersion, lastValidVersion string) {
-	migrationGaps = make([]models.MigrationVersion, 0)
+func (m *Migrator) FindMigrationGaps(mvs []models.MigrationVersion, currentVersion string) (migrationGaps map[string]models.MigrationVersion, lastValidVersion string) {
+	migrationGaps = make(map[string]models.MigrationVersion)
 	lastValidVersion = ""
 	for _, mv := range mvs {
 		if mv.Version >= currentVersion {
@@ -284,7 +284,7 @@ func (m *Migrator) FindMigrationGaps(mvs []models.MigrationVersion, currentVersi
 		}
 
 		if !mv.ExistsInDB {
-			migrationGaps = append(migrationGaps, mv)
+			migrationGaps[mv.Version] = mv
 		}
 		if len(migrationGaps) == 0 {
 			lastValidVersion = mv.Version
@@ -308,7 +308,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 	if (command == COMMAND_UP || command == COMMAND_DOWN) && toVersion != "" {
 		NoOfMigrations, err = strconv.Atoi(toVersion)
 		if err != nil || NoOfMigrations < 1 || NoOfMigrations > 9999999 {
-			return fmt.Errorf(funcPrefix + " - a valid number of migrations [N] is required", command)		
+			return errors.New(funcPrefix + " - a valid number of migrations [N] is required")		
 		}
 
 		NoOfMigrations = int(math.Abs(float64(NoOfMigrations)))
@@ -345,7 +345,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 
 	if len(mvs) == 0 {
 		msg = "no migrations found"
-		Fmt_warning.Println(msg)
+		Fmt_highlight.Println(msg)
 		m.App.Infolog.Println("migrate - " + msg)
 		return nil		
 	}	
@@ -394,7 +394,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 			if mvs[i].FileExists(command) {
 				toVersion = mvs[i].Version
 				msg = fmt.Sprintf("migrating up to version %s", toVersion)
-				fmt.Println(msg)			
+				Fmt_highlight.Println(msg)			
 				m.App.Infolog.Println(funcPrefix + " - " +msg)
 				break
 			}
@@ -471,7 +471,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 
 	if command == COMMAND_FORCE {
 		msg = fmt.Sprintf("forcing current version to %s", toVersion)
-		fmt.Print(msg)
+		Fmt_highlight.Print(msg)
 	}
 
 	for _, mv := range migrationsToRun {
@@ -487,7 +487,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 			}
 		
 			msg = fmt.Sprintf("running %s migration %s", migrationDirection, mv.Filename(migrationDirection))
-			fmt.Print(msg)
+			Fmt_highlight.Print(msg)
 			err = m.DBRepository.MigrateData(mv.Version, string(data), migrationDirection)
 			if err != nil {
 				Fmt_error.Println(" - failed")
