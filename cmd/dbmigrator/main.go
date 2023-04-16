@@ -373,13 +373,13 @@ func fixMigrations(m *migrator.Migrator) error {
 	migrationGaps, lastValidVersion := m.FindMigrationGaps(mvs, currentVersion)
 
 	if len(migrationGaps) == 0 {
-		migrator.Fmt_success.Println("no migration gaps found. Nothing to fix")
+		migrator.Fmt_success.Println("no migration gaps found - nothing to fix")
 		return nil
 	}
 
 	if lastValidVersion == "" {
-		err = m.GetConfirmation(`Fix is about to migrate down all migrations and back up to the current version.
-Please type 'yes' to continue with the fix or 'no' to cancel`, []string{"yes"})
+		err = m.GetConfirmation(fmt.Sprintf(`Fix is about to migrate down all migrations and back up to the current version (%s).
+Please type 'yes' to continue with the fix or 'no' to cancel`, currentVersion), []string{"yes"})
 		if err != nil {
 			return fmt.Errorf(funcPrefix + " - %s", err)
 		}
@@ -392,8 +392,8 @@ Please type 'yes' to continue with the fix or 'no' to cancel`, []string{"yes"})
 			return fmt.Errorf(funcPrefix + " - %s", err)
 		}			
 	} else {
-		err = m.GetConfirmation(fmt.Sprintf(`Fix is about to migrate down to version %s and back up to the current version.
-Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion), []string{"yes"})
+		err = m.GetConfirmation(fmt.Sprintf(`Fix is about to migrate down to version %s and back up to the current version (%s).
+Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion, currentVersion), []string{"yes"})
 		if err != nil {
 			return fmt.Errorf(funcPrefix + " - %s", err)
 		}	
