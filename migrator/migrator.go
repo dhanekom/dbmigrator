@@ -488,7 +488,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 			}
 		
 			msg = fmt.Sprintf("running %s migration %s", migrationDirection, mv.Filename(migrationDirection))
-			Fmt_highlight.Print(msg)
+			fmt.Print(msg)
 			err = m.DBRepository.MigrateData(mv.Version, string(data), migrationDirection)
 			if err != nil {
 				Fmt_error.Println(" - failed")

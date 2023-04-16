@@ -326,7 +326,7 @@ func listMigrationInfo(m *migrator.Migrator, option string) error {
 	for i := listFrom; i <= len(mvs) - 1; i++{
 	  mv := mvs[i]
 		if _, ok := migrationGaps[mv.Version]; ok {
-			migrator.Fmt_highlight.Printf(lineFormat, mv.Version, vline, mv.Desc, vline, getBoolStr(mv.ExistsInDB, "Y", " "), vline, getBoolStr(mv.UpFileExists, "Y", " "), vline, getBoolStr(mv.DownFileExists, "Y", " "))
+			migrator.Fmt_highlight.Printf(lineFormat, mv.Version, vline, mv.Desc, vline, "N", vline, getBoolStr(mv.UpFileExists, "Y", " "), vline, getBoolStr(mv.DownFileExists, "Y", " "))
 		} else if mv.Version == currentVersion {
 			migrator.Fmt_success.Printf(lineFormat, mv.Version, vline, mv.Desc, vline, getBoolStr(mv.ExistsInDB, "Y", " "), vline, getBoolStr(mv.UpFileExists, "Y", " "), vline, getBoolStr(mv.DownFileExists, "Y", " "))		
 		} else {
@@ -334,6 +334,10 @@ func listMigrationInfo(m *migrator.Migrator, option string) error {
 		}
 	}
 
+	if len(migrationGaps) > 0 {
+		fmt.Println("")
+		migrator.Fmt_highlight.Println("HINT: The \"fix\" command can be used to attempt to run the missing migrations")
+	}
 	return nil
 }
 
@@ -386,7 +390,7 @@ Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion)
 	}	
 
 	msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
-	fmt.Println(msg)
+	migrator.Fmt_highlight.Println(msg)
 	m.App.Infolog.Println(funcPrefix + " - " + msg)
 	err = m.Migrate(migrator.COMMAND_DOWNTO, lastValidVersion)
 	if err != nil {
@@ -394,7 +398,7 @@ Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion)
 	}
 
 	msg = fmt.Sprintf("migrating up to previous current version %s", currentVersion)
-	fmt.Println(msg)
+	migrator.Fmt_highlight.Println(msg)
 	m.App.Infolog.Println(funcPrefix + " - " + msg)
 	err = m.Migrate(migrator.COMMAND_UPTO, currentVersion)
 	if err != nil {
