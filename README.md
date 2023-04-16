@@ -4,16 +4,11 @@ A Go based application that helps you migrate database structures.
 
 <!-- ![](/docs/images/demo.gif) -->
 
-List migrations and quickly see problems (yellow) and the current migration version (green)
-![](/docs/images/dbmigrator_list_with_gap.png)
-
 Run up or down migrations
 ![](/docs/images/dbmigrator_up.png)
 
-## Supported databases
-
-- PostgreSQL
-- MySQL
+List migrations and quickly see problems (yellow) and the current migration version (green)
+![](/docs/images/dbmigrator_list_with_gap.png)
 
 ## Features
 
@@ -22,6 +17,11 @@ Run up or down migrations
 - Assist users with fixing migration gaps (E.g. if migrations no 1 and 3 have been executed and after you do a git pull you find a migration no 2 that was added by another user)
 - List migration details in a table format
 - Configs can be specified by either command line arguments (flags) or by a .env file that is in the same directory as the executable. If configs are specified by both the command line arguments and the .env file then the command line arguments take preference
+
+## Supported databases
+
+- PostgreSQL
+- MySQL
 
 ## Building the cli application
 
