@@ -142,7 +142,7 @@ runs all down migrations with a version number that is lower than the current ve
 
 ### list:
 
-<code>dbmigrator list</code> displays a table that provides an overview of all migration versions including their descriptions, whether they have been run and whether their up and down sql migration files could be found
+<code>dbmigrator list</code> displays a table that provides an overview of all migration versions including their descriptions, whether they have been run and whether their up and down sql migration files could be found.
 
 ### version:
 
@@ -151,3 +151,7 @@ runs all down migrations with a version number that is lower than the current ve
 ### fix:
 
 <code>dbmigrator fix</code> determines whether there are any migration gaps. If gaps are found all down migrations will be run to get the db on the version before the oldest gap and then all up migrations are run to get the db back the the current version (the current version before the fix command was run)
+
+### force:
+
+<code>dbmigrator force 20220501_120000</code> ensures that the current (highest) migration version in table schema_migration is 20220501_120000. NB! The "force" command does not run any magrations and only has an impact on the data in the schema_migration table.
