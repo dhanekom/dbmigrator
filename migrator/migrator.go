@@ -62,6 +62,7 @@ func NewMigrator(path string, db *dbrepo.DBRepo, a *config.AppConfig) (*Migrator
 		confirmationProvided: false,
 	}
 
+	color.New()
 	return &result, nil
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/dhanekom/dbmigrator/config"
 	"github.com/dhanekom/dbmigrator/dbrepo"
 	"github.com/dhanekom/dbmigrator/migrator"
+	"github.com/fatih/color"
 	"github.com/joho/godotenv"
 )
 
@@ -315,19 +316,21 @@ func listMigrationInfo(m *migrator.Migrator, option string) error {
 		}
 	}
 
-	lineFormat := "%-15s | %-30s | %-8s | %-9s | %-11s\n"
+	const vline = '|'
+	lineFormat := "%-15s %c %-40s %c %-8s %c %-2s %c %-4s\n"
 
-	fmt.Printf(lineFormat, "Version", "Description", "Migrated", "Up Exists", "Down Exists")
-	fmt.Printf(lineFormat, "-------", "-----------", "--------", "---------", "-----------")
+	whiteUnderline := color.New(color.FgWhite).Add(color.Underline)
+	whiteUnderline.Printf(lineFormat, "VERSION", vline, "DESCRIPTION", vline, "MIGRATED", vline, "UP", vline, "DOWN")
+	// fmt.Println(strings.Repeat("-", 83))
 
 	for i := listFrom; i <= len(mvs) - 1; i++{
 	  mv := mvs[i]
 		if _, ok := migrationGaps[mv.Version]; ok {
-			migrator.Fmt_highlight.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
+			migrator.Fmt_highlight.Printf(lineFormat, mv.Version, vline, mv.Desc, vline, getBoolStr(mv.ExistsInDB, "Y", " "), vline, getBoolStr(mv.UpFileExists, "Y", " "), vline, getBoolStr(mv.DownFileExists, "Y", " "))
 		} else if mv.Version == currentVersion {
-			migrator.Fmt_success.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))		
+			migrator.Fmt_success.Printf(lineFormat, mv.Version, vline, mv.Desc, vline, getBoolStr(mv.ExistsInDB, "Y", " "), vline, getBoolStr(mv.UpFileExists, "Y", " "), vline, getBoolStr(mv.DownFileExists, "Y", " "))		
 		} else {
-			fmt.Printf(lineFormat, mv.Version, mv.Desc, getBoolStr(mv.ExistsInDB, "Y", " "), getBoolStr(mv.UpFileExists, "Y", " "), getBoolStr(mv.DownFileExists, "Y", " "))
+			fmt.Printf(lineFormat, mv.Version, vline, mv.Desc, vline, getBoolStr(mv.ExistsInDB, "Y", " "), vline, getBoolStr(mv.UpFileExists, "Y", " "), vline, getBoolStr(mv.DownFileExists, "Y", " "))
 		}
 	}
 
