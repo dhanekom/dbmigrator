@@ -45,8 +45,6 @@ A Go based application that helps you migrate database structures.
 | up [N]   | Applies all or N up migrations                                                            |
 | down [N] | Applies all or N down migrations                                                          |
 | goto V   | Migrates up or down to version V                                                          |
-| upto V   | Migrates up to version V (prevents accidental down migrations)                            |
-| downto V | Migrates down to version V (prevents accidental up migrations)                            |
 | list [N] | Lists all or the last N migrations                                                        |
 | version  | Lists the current migration version                                                       |
 | fix      | Finds older migrations that have not been executed and attempts to run them in a safe way |
@@ -106,8 +104,8 @@ A Go based application that helps you migrate database structures.
 - Send the up and down migration files to the migration_path (It is import to keep this folder up to date to ensure that migrations are executed in the correct order)
 - Upgrade the database structure by running the up migrations.
   <br><code>dbmigrator up</code><br>
-  Note: You might want to send migration files that must not yet be run (e.g. if you want to send up and down migration files before updating the application(s) that uses your database). In this case you could upgrade to a specified migration version by running "dbmigrator upto [version]" or "dbmigrator goto [version]".
-  <br>E.g. <code>dbmigrator upto 20221015_183738</code><br>
+  Note: You might want to send migration files that must not yet be run (e.g. if you want to send up and down migration files before updating the application(s) that uses your database). In this case you could upgrade to a specified migration version by running "dbmigrator goto [version]".
+  <br>E.g. <code>dbmigrator goto 20221015_183738</code><br>
 
 ## Examples
 

@@ -32,8 +32,6 @@ var commands = []Command {
 	{migrator.COMMAND_UP, "up [N]", "Applies all or N up migrations"},
 	{migrator.COMMAND_DOWN, "down [N]", "Applies all or N down migrations"},
 	{migrator.COMMAND_GOTO, "goto V", "Migrates up or down to version V"},
-	{migrator.COMMAND_UPTO, "upto V", "Migrates up to version V (prevents accidental down migrations)"},
-	{migrator.COMMAND_DOWNTO, "downto V", "Migrates down to version V (prevents accidental up migrations)"},		
 	{migrator.COMMAND_LIST, "list [N]", "Lists all or the last N migrations"},
 	{migrator.COMMAND_VERSION, "version", "Lists the current migration version"},
 	{migrator.COMMAND_FIX, "fix", "Finds older migrations that have not been executed and attempts to run them in a safe way"},
@@ -246,10 +244,6 @@ func run(m *migrator.Migrator, command, commandAttr string) error {
 		return m.Down(commandAttr)
 	case migrator.COMMAND_GOTO:
 		return m.Goto(commandAttr)
-	case migrator.COMMAND_UPTO:
-		return m.Upto(commandAttr)
-	case migrator.COMMAND_DOWNTO:
-		return m.Downto(commandAttr)		
 	case migrator.COMMAND_FORCE:
 		return m.Force(commandAttr)
 	case migrator.COMMAND_LIST:
@@ -383,24 +377,40 @@ func fixMigrations(m *migrator.Migrator) error {
 		return nil
 	}
 
-	err = m.GetConfirmation(fmt.Sprintf(`Fix is about to migrate down to version %s and back up to the current version.
-Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion), []string{"yes"})
-	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
-	}	
+	if lastValidVersion == "" {
+		err = m.GetConfirmation(`Fix is about to migrate down all migrations and back up to the current version.
+Please type 'yes' to continue with the fix or 'no' to cancel`, []string{"yes"})
+		if err != nil {
+			return fmt.Errorf(funcPrefix + " - %s", err)
+		}
 
-	msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
-	migrator.Fmt_highlight.Println(msg)
-	m.App.Infolog.Println(funcPrefix + " - " + msg)
-	err = m.Migrate(migrator.COMMAND_DOWNTO, lastValidVersion)
-	if err != nil {
-		return fmt.Errorf(funcPrefix + " - %s", err)
+		msg = "migrating down all migrations"
+		migrator.Fmt_highlight.Println(msg)
+		m.App.Infolog.Println(funcPrefix + " - " + msg)
+		err = m.Migrate(migrator.COMMAND_DOWN, "")
+		if err != nil {
+			return fmt.Errorf(funcPrefix + " - %s", err)
+		}			
+	} else {
+		err = m.GetConfirmation(fmt.Sprintf(`Fix is about to migrate down to version %s and back up to the current version.
+Please type 'yes' to continue with the fix or 'no' to cancel`, lastValidVersion), []string{"yes"})
+		if err != nil {
+			return fmt.Errorf(funcPrefix + " - %s", err)
+		}	
+
+		msg = fmt.Sprintf("migrating down to version %s", lastValidVersion)
+		migrator.Fmt_highlight.Println(msg)
+		m.App.Infolog.Println(funcPrefix + " - " + msg)
+		err = m.Migrate(migrator.COMMAND_GOTO, lastValidVersion)
+		if err != nil {
+			return fmt.Errorf(funcPrefix + " - %s", err)
+		}		
 	}
 
 	msg = fmt.Sprintf("migrating up to previous current version %s", currentVersion)
 	migrator.Fmt_highlight.Println(msg)
 	m.App.Infolog.Println(funcPrefix + " - " + msg)
-	err = m.Migrate(migrator.COMMAND_UPTO, currentVersion)
+	err = m.Migrate(migrator.COMMAND_GOTO, currentVersion)
 	if err != nil {
 		return fmt.Errorf(funcPrefix + " - %s", err)
 	}

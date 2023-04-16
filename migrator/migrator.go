@@ -37,8 +37,6 @@ const (
 	COMMAND_CREATE = "create"
 	COMMAND_UP = "up"
 	COMMAND_DOWN = "down"
-	COMMAND_UPTO = "upto"
-	COMMAND_DOWNTO = "downto"	
 	COMMAND_GOTO = "goto"
 	COMMAND_LIST = "list"
 	COMMAND_VERSION = "version"
@@ -302,7 +300,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
   var NoOfMigrations int = 0
 	var err error
 
-	if command != COMMAND_UP && command != COMMAND_UPTO && command != COMMAND_DOWN && command != COMMAND_DOWNTO && command != COMMAND_GOTO && command != COMMAND_FORCE {
+	if command != COMMAND_UP && command != COMMAND_DOWN && command != COMMAND_GOTO && command != COMMAND_FORCE {
 		return fmt.Errorf(funcPrefix + " - %q is not a valid migration command", command)
 	}
 
@@ -318,7 +316,7 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 		}
 	}
 
-	if (command == COMMAND_GOTO || command == COMMAND_UPTO || command == COMMAND_DOWNTO || command == COMMAND_FORCE) && toVersion == "" {
+	if (command == COMMAND_GOTO || command == COMMAND_FORCE) && toVersion == "" {
 		return fmt.Errorf(funcPrefix + " - the %s command requires a to version to be specified", command)		
 	} 	
 
@@ -440,18 +438,18 @@ func (m *Migrator) Migrate(command, toVersion string) error {
 
 	// Determine migration direction. If e.g. version > current version then an up is required
 	
-  if (command == COMMAND_UP || command == COMMAND_DOWN || command == COMMAND_UPTO || command == COMMAND_DOWNTO) {
+  if (command == COMMAND_UP || command == COMMAND_DOWN) {
 		var commandDirection string
-		if command == COMMAND_UP || command == COMMAND_UPTO	 {
+		if command == COMMAND_UP 	 {
 			commandDirection = DIRECTION_UP
 		} else {
 			commandDirection = DIRECTION_DOWN
 		}
 
 		if commandDirection != migrationDirection {
-			if command == COMMAND_UP || command == COMMAND_UPTO {
+			if command == COMMAND_UP {
 				return fmt.Errorf(funcPrefix + " - up migration not allowed because the current db version (%s) is higher than %s", currentVersion, toVersion)
-			} else if command == COMMAND_DOWN || command == COMMAND_DOWNTO {
+			} else if command == COMMAND_DOWN {
 				return fmt.Errorf(funcPrefix + " - down migration not allowed because the current db version (%s) is lower than %s", currentVersion, toVersion)
 			}
 		}
@@ -518,17 +516,6 @@ func (m Migrator) Up(toVersion string) error {
 func (m Migrator) Down(toVersion string) error {
 	return m.Migrate(COMMAND_DOWN, toVersion)
 }
-
-// Upto migrates a DB up to the version if the version is higher than the current version
-func (m Migrator) Upto(toVersion string) error {
-	return m.Migrate(COMMAND_UPTO, toVersion)
-}
-
-// Down migrates a DB down to the version if the version is lower than the current version
-func (m Migrator) Downto(toVersion string) error {
-	return m.Migrate(COMMAND_DOWNTO, toVersion)
-}
-
 
 // Goto migrates a DB to the migration specified by version
 func (m Migrator) Goto(toVersion string) error {
