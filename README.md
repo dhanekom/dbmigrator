@@ -4,12 +4,10 @@ A Go based application that helps you migrate database structures.
 
 <!-- ![](/docs/images/demo.gif) -->
 
-### List migrations and quickly see problems (yellow) and the current migration version (green)
-
+List migrations and quickly see problems (yellow) and the current migration version (green)
 ![](/docs/images/dbmigrator_list_with_gap.png)
 
-### Run up or down migrations
-
+Run up or down migrations
 ![](/docs/images/dbmigrator_up.png)
 
 ## Supported databases
