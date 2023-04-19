@@ -120,7 +120,7 @@ func main() {
 	checkAndAddMissingParams("dbdriver", *dbDrivername)
 	checkAndAddMissingParams("host", *dbHost)
 	checkAndAddMissingParams("port", *dbPort)
-	checkAndAddMissingParams("dbName", *dbName)
+	checkAndAddMissingParams("dbname", *dbName)
 	checkAndAddMissingParams("user", *dbUser)
 	checkAndAddMissingParams("password", *dbPassword)
 	checkAndAddMissingParams("migration_path", *migrationPath)
