@@ -1,3 +1,3 @@
 set GOARCH=386
-go install -ldflags="-s -w" .\cmd\dbmigrator\.
-copy C:\Users\dewaldh\go\bin\windows_386\dbmigrator.exe c:\grppos
+go install -ldflags="-s -w" -buildvcs=false .\cmd\dbmigrator\.
+copy %USERPROFILE%\go\bin\windows_386\dbmigrator.exe c:\grppos
