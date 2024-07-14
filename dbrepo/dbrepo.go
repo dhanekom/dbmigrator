@@ -11,16 +11,16 @@ import (
 
 const (
 	DBDRIVER_POSTGRES = "POSTGRES"
-	DBDRIVER_MYSQL = "MYSQL"
+	DBDRIVER_MYSQL    = "MYSQL"
 )
 
 type DBConnectionData struct {
-	DBHost string
-	DBPort string
-	DBName string
-	DBUser string
+	DBHost     string
+	DBPort     string
+	DBName     string
+	DBUser     string
 	DBPassword string
-	DBSSL string
+	DBSSL      string
 }
 
 type DBDriver interface {
@@ -32,10 +32,10 @@ type DBDriver interface {
 }
 
 type DBRepo struct {
-	app *config.AppConfig
-	driver DBDriver
+	app            *config.AppConfig
+	driver         DBDriver
 	connectionData DBConnectionData
-	db *sql.DB
+	db             *sql.DB
 }
 
 func NewDBRepo(dbdrivername string, connData DBConnectionData, a *config.AppConfig) (*DBRepo, error) {
@@ -49,16 +49,15 @@ func NewDBRepo(dbdrivername string, connData DBConnectionData, a *config.AppConf
 		dbrepo.connectionData = connData
 	case DBDRIVER_MYSQL:
 		dbrepo.driver = &MySQLDBDriver{}
-		dbrepo.connectionData = connData		
+		dbrepo.connectionData = connData
 	default:
 		return nil, fmt.Errorf("ConnectToDB - %q is not a valid DB Driver Name. Value must be one of the following (%s)", dbdrivername, fmt.Sprintf("%s, %s", DBDRIVER_POSTGRES, DBDRIVER_MYSQL))
-	}	
+	}
 
 	return &dbrepo, nil
 }
 
-func (r *DBRepo) ConnectToDB() (error) {
-	r.app.Infolog.Printf("connecting to DB %s on %s:%s", r.connectionData.DBName, r.connectionData.DBHost, r.connectionData.DBPort)
+func (r *DBRepo) ConnectToDB() error {
 	myDB, err := r.driver.Open(r.connectionData)
 	if err != nil {
 		return fmt.Errorf("ConnectToDB - %s", err)
@@ -94,14 +93,14 @@ func (r DBRepo) MigrateDB(toVersion, migrationDirection string) error {
 	stmt, err := r.driver.MigrateDBSQL(migrationDirection)
 	if err != nil {
 		return fmt.Errorf("migrateDB - %s", err)
-	}	
+	}
 
 	_, err = r.db.Exec(stmt, toVersion)
 	if err != nil {
 		return fmt.Errorf("migrateDB - %s", err)
 	}
 
-	return nil	
+	return nil
 }
 
 func (r DBRepo) MigrateData(toVersion, script, migrationDirection string) error {
@@ -123,11 +122,11 @@ func (r DBRepo) MigrateData(toVersion, script, migrationDirection string) error 
 		return fmt.Errorf("migrateData - version %s - Admin script - %s", toVersion, err)
 	}
 
-  if err = tx.Commit(); err != nil {
+	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("migrateData - Commit - %s", err)
 	}
 
-	return nil	
+	return nil
 }
 
 func (r DBRepo) CurrentVersion() (string, error) {
